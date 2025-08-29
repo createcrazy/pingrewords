@@ -1,1 +1,2231 @@
-# pingrewords
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- NAMO TASSA BHAGAVATO ARAHATO SAMMA SAMBUDDHASSA -->
+    <title>Ping Rewards</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#6366f1',  /* Indigo */
+                        'secondary': '#f9a8d4', /* Pink */
+                        'background': '#0f172a', /* Slate 900 */
+                        'card-bg': '#1e293b', /* Slate 800 */
+                        'text-color': '#e2e8f0', /* Slate 200 */
+                        'muted-text': '#94a3b8', /* Slate 400 */
+                        'accent-green': '#10b981', /* Emerald */
+                        'accent-orange': '#f59e0b', /* Amber */
+                        'accent-purple': '#a855f7', /* Purple */
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    keyframes: {
+                        spin: {
+                            '0%': { transform: 'rotate(0deg)' },
+                            '100%': { transform: 'rotate(360deg)' },
+                        },
+                        coinFly: {
+                            '0%': { transform: 'translateY(0) scale(1)', opacity: '1' },
+                            '100%': { transform: 'translateY(-100px) scale(0.5)', opacity: '0' },
+                        }
+                    },
+                    animation: {
+                        spin: 'spin 1s linear infinite',
+                        coin: 'coinFly 1s ease-in-out forwards',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* General Styles for the entire app */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a; /* Tailwind: bg-slate-900 */
+            color: #e2e8f0; /* Tailwind: text-slate-200 */
+            margin: 0;
+            overflow-x: hidden;
+        }
+        
+        /* Utility for drawer/sidebar state */
+        .sidebar.open {
+            transform: translateX(0);
+        }
+
+        .backdrop.open {
+            display: block;
+        }
+
+        .no-scroll {
+            overflow: hidden;
+        }
+
+        /* Coin Animation Styles - Adjusted for Tailwind CSS */
+        .coin-icon {
+            animation: coinFly 1s ease-in-out forwards;
+        }
+
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+    </style>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"></script>
+</head>
+<body class="bg-background text-text-color">
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-background bg-opacity-70 flex justify-center items-center z-[1002] transition-opacity duration-300 opacity-0 pointer-events-none">
+        <div class="animate-spin rounded-full h-12 w-12 border-4 border-text-color border-t-primary"></div>
+    </div>
+
+    <!-- Login Page View -->
+    <div id="login-page" class="view flex justify-center items-center min-h-screen p-4" style="display: flex;">
+        <div class="w-full max-w-sm text-center">
+            <div class="mb-8">
+                <!-- New Logo SVG: Letter 'P' -->
+                <svg class="w-20 h-20 mx-auto fill-primary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9v-4h2.5c1.38 0 2.5-1.12 2.5-2.5S12.88 7 11.5 7H9v-2h2.5C14.43 5 16 6.57 16 8.5S14.43 12 11.5 12H9v4h4v-2z"/>
+                </svg>
+                <div class="text-2xl font-bold mt-2">Ping Rewards</div>
+                <div class="text-muted-text mt-1">Get rewarded for watching videos.</div>
+            </div>
+            <div class="bg-card-bg p-8 rounded-xl shadow-lg border border-slate-700">
+                <h2 class="text-xl font-semibold mb-6">Welcome to Ping Rewards</h2>
+                <p id="login-message" class="text-red-500 text-sm mb-4" style="display: none;"></p>
+                <button id="google-sign-in-btn" class="w-full py-3 bg-primary hover:bg-indigo-600 text-white font-semibold rounded-lg transition-colors duration-300 flex items-center justify-center gap-3">
+                    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path fill="#ffffff" d="M22.4 12.2c0-.7-.1-1.3-.2-1.9H12v3.8h5.3c-.2 1.2-.8 2.2-1.6 3l3.2 2.5c2.1-1.9 3.4-4.7 3.4-8.4z"/>
+                        <path fill="#ffffff" d="M12 22c3.2 0 5.9-1.1 7.8-3l-3.2-2.5c-1 1.2-2.3 1.9-4.6 1.9-3.5 0-6.5-2.4-7.6-5.6l-3.3 2.5c1.4 2.8 4.4 4.8 7.9 4.8z"/>
+                        <path fill="#ffffff" d="M4.4 12.2c0-1.6.4-3.1 1.2-4.4L2.3 5.4C.9 7.7 0 10 0 12.2c0 2.2.9 4.5 2.3 6.8l3.3-2.4c-.8-1.3-1.2-2.8-1-1.4z"/>
+                        <path fill="#ffffff" d="M12 4.1c1.8 0 3.3.6 4.6 1.8L19.4 3C17.5 1.1 14.8 0 12 0c-3.5 0-6.5 2-7.9 4.8l3.3 2.4C8.7 5.7 10.2 5 12 5z"/>
+                    </svg>
+                    Sign in with Google
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main Application Container (Hidden initially) -->
+    <div id="app-container" class="view flex flex-col md:flex-row w-full min-h-screen" style="display: none;">
+        <!-- Sidebar -->
+        <div id="sidebar" class="sidebar fixed md:relative z-[100] md:z-0 top-0 left-0 w-64 h-full bg-card-bg shadow-lg transform -translate-x-full transition-transform duration-300 ease-in-out md:translate-x-0">
+            <div class="p-6 pb-4 border-b border-slate-700 flex items-center">
+                <!-- New Logo SVG: Letter 'P' -->
+                <svg class="w-10 h-10 fill-primary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9v-4h2.5c1.38 0 2.5-1.12 2.5-2.5S12.88 7 11.5 7H9v-2h2.5C14.43 5 16 6.57 16 8.5S14.43 12 11.5 12H9v4h4v-2z"/>
+                </svg>
+                <span class="text-xl font-bold ml-2">Ping Rewards</span>
+            </div>
+            <ul class="flex flex-col p-4 space-y-2">
+                <li>
+                    <a href="#" class="nav-link user-link flex items-center p-3 rounded-lg hover:bg-primary/20 transition-colors duration-200" data-target="user-dashboard-view">
+                        <svg class="w-6 h-6 mr-3 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 13h11v-2H3v2zm0 4h11v-2H3v2zm0-8h11V7H3v2zm13 .01V7h5v2.01h-5zM16 17h5v-2h-5v2zm0-4h5v-2h-5v2z"/></svg>
+                        Dashboard
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="nav-link user-link flex items-center p-3 rounded-lg hover:bg-primary/20 transition-colors duration-200" data-target="watch-videos-view">
+                        <svg class="w-6 h-6 mr-3 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 16.5l6-4.5-6-4.5v9zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
+                        Watch Videos
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="nav-link user-link flex items-center p-3 rounded-lg hover:bg-primary/20 transition-colors duration-200" data-target="social-tasks-view">
+                        <svg class="w-6 h-6 mr-3 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6zm-11 4c0 1.1-.9 2-2 2H5c-1.1 0-2-.9-2-2V8c0-1.1.9-2 2-2h4c1.1 0 2 .9 2 2v2zm-2 5c-.55 0-1-.45-1-1v-1h2v1c0 .55-.45 1-1 1zm4 0c-.55 0-1-.45-1-1v-1h2v1c0 .55-.45 1-1 1zm4 0c-.55 0-1-.45-1-1v-1h2v1c0 .55-.45 1-1 1zm-8-3c0 .55-.45 1-1 1s-1-.45-1-1v-1h2v1zM20 8v2h-2V8h2zM12 8h4v2h-4V8zm4 7c0 .55-.45 1-1 1s-1-.45-1-1v-1h2v1z"/></svg>
+                        Social Tasks
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="nav-link user-link flex items-center p-3 rounded-lg hover:bg-primary/20 transition-colors duration-200" data-target="points-history-view">
+                        <svg class="w-6 h-6 mr-3 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+                        Points History
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="nav-link user-link flex items-center p-3 rounded-lg hover:bg-primary/20 transition-colors duration-200" data-target="about-view">
+                        <svg class="w-6 h-6 mr-3 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 14h-2v-2h2v2zm0-4h-2V7h2v5z"/></svg>
+                        About
+                    </a>
+                </li>
+                <li
+                    style="padding:1rem 0;font-size:1.15rem;cursor:pointer;border-bottom:1px solid #ffe0e9;color:#ff69b4;transition:background 0.2s, color 0.2s;">
+                </li>
+                <li>
+                    <a href="https://t.me/Mr_PingGP" target="_blank"
+                        style="display:flex;align-items:center;text-decoration:none;color:#ff69b4;">
+                        <span style="display:inline-block;width:24px;height:24px;margin-right:20px;">
+                            <svg style="width:100%;height:100%;fill:currentColor;" xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24">
+                                <path
+                                    d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 14h-2v-2h2v2zm0-4h-2V7h2v5z" />
+                            </svg>
+                        </span>
+                        Help
+                    </a>
+                </li>
+<!--                <li>
+                    <a href="https://t.me/Mr_PingGP" target="_blank" class="nav-link user-link flex items-center p-3 rounded-lg hover:bg-primary/20 transition-colors duration-200">
+                        <svg class="w-6 h-6 mr-3 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 14h-2v-2h2v2zm0-4h-2V7h2v5z"/></svg>
+                        Help
+                    </a>
+                </li> -->
+                
+                <hr class="my-4 border-slate-700 admin-link">
+
+                <li>
+                    <a href="#" class="nav-link admin-link flex items-center p-3 rounded-lg hover:bg-primary/20 transition-colors duration-200" data-target="admin-dashboard-view">
+                        <svg class="w-6 h-6 mr-3 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 13h11v-2H3v2zm0 4h11v-2H3v2zm0-8h11V7H3v2zm13 .01V7h5v2.01h-5zM16 17h5v-2h-5v2zm0-4h5v-2h-5v2z"/></svg>
+                        Admin Dashboard
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="nav-link admin-link flex items-center p-3 rounded-lg hover:bg-primary/20 transition-colors duration-200" data-target="manage-videos-view">
+                        <svg class="w-6 h-6 mr-3 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 16.5l6-4.5-6-4.5v9zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
+                        Manage Videos
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="nav-link admin-link flex items-center p-3 rounded-lg hover:bg-primary/20 transition-colors duration-200" data-target="manage-social-tasks-view">
+                        <svg class="w-6 h-6 mr-3 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 10V8h4v4h3l-5 5-5-5h3z"/></svg>
+                        Manage Social Tasks
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="nav-link admin-link flex items-center p-3 rounded-lg hover:bg-primary/20 transition-colors duration-200" data-target="manage-users-view">
+                        <svg class="w-6 h-6 mr-3 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                        Manage Users
+                    </a>
+                </li>
+            </ul>
+            <div id="sidebar-profile" class="p-6 border-t border-slate-700 mt-auto">
+                <!-- Profile info will be updated by JS -->
+            </div>
+        </div>
+
+        <div id="backdrop" class="backdrop fixed inset-0 bg-black bg-opacity-50 z-[99] hidden md:hidden"></div>
+
+        <!-- Main Content Area -->
+        <div id="app-content" class="flex-grow p-4 md:p-6 transition-all duration-300 ease-in-out">
+            <header class="flex justify-between items-center mb-6">
+                <h1 id="page-title" class="text-2xl md:text-3xl font-bold flex items-center">
+                    <button id="menu-toggle" class="md:hidden p-2 -ml-2 rounded-md hover:bg-card-bg transition-colors duration-200">
+                        <svg class="w-6 h-6 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+                    </button>
+                    Dashboard
+                </h1>
+                <div id="header-meta" class="hidden md:flex items-center space-x-4">
+                    <!-- Header meta info will be updated by JS -->
+                </div>
+            </header>
+
+            <!-- User Dashboard View -->
+            <div id="user-dashboard-view" class="content-view" style="display: none;">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                    <div class="card bg-card-bg p-6 rounded-xl shadow-md border border-slate-700 col-span-1 lg:col-span-3 flex flex-col md:flex-row justify-between items-center">
+                        <div>
+                            <h2 id="welcome-message" class="text-xl font-semibold mb-2"></h2>
+                            <p class="text-muted-text">Ready to earn more points? Let's start watching some videos.</p>
+                        </div>
+                        <a href="#" class="nav-link user-link mt-4 md:mt-0 px-6 py-3 bg-primary hover:bg-indigo-600 text-white font-semibold rounded-lg transition-colors duration-300 whitespace-nowrap" data-target="watch-videos-view">
+                            Watch Now
+                        </a>
+                    </div>
+                    <div class="card bg-card-bg p-6 rounded-xl shadow-md border border-slate-700">
+                        <h2 class="text-lg font-semibold mb-2 text-muted-text">Total Points</h2>
+                        <div class="text-4xl font-bold text-primary" id="total-points-value">0</div>
+                    </div>
+                    <div class="card bg-card-bg p-6 rounded-xl shadow-md border border-slate-700">
+                        <h2 class="text-lg font-semibold mb-2 text-muted-text">Estimated Earnings</h2>
+                        <div class="text-4xl font-bold text-accent-green" id="estimated-earnings-value">$0.00</div>
+                    </div>
+                    <div class="card bg-card-bg p-6 rounded-xl shadow-md border border-slate-700">
+                        <h2 class="text-lg font-semibold mb-2 text-muted-text">Videos Watched</h2>
+                        <div class="text-4xl font-bold text-accent-purple" id="videos-watched-value">0</div>
+                    </div>
+                </div>
+
+                <div class="quick-actions mb-6">
+                    <h2 class="text-xl font-semibold mb-4">Quick Actions</h2>
+                    <div class="flex flex-wrap gap-4">
+                        <a href="#" class="nav-link user-link px-6 py-3 bg-card-bg border border-slate-700 rounded-lg text-text-color hover:bg-slate-700 transition-colors duration-200" data-target="watch-videos-view">
+                            Watch Videos
+                        </a>
+                        <a href="#" class="nav-link user-link px-6 py-3 bg-card-bg border border-slate-700 rounded-lg text-text-color hover:bg-slate-700 transition-colors duration-200" data-target="points-history-view">
+                            View History
+                        </a>
+                        <a href="#" class="nav-link user-link px-6 py-3 bg-card-bg border border-slate-700 rounded-lg text-text-color hover:bg-slate-700 transition-colors duration-200" data-target="social-tasks-view">
+                            Complete Tasks
+                        </a>
+                    </div>
+                </div>
+
+                <div class="card bg-card-bg p-6 rounded-xl shadow-md border border-slate-700 flex flex-col md:flex-row justify-between items-center">
+                    <div>
+                        <h2 class="text-xl font-semibold mb-2">Cash Out Points</h2>
+                        <p class="text-muted-text">5000 Points = $1.00</p>
+                        <p class="text-muted-text">Keep watching to increase your earnings.</p>
+                    </div>
+                    <button class="cashout-btn mt-4 md:mt-0 px-6 py-3 bg-primary hover:bg-indigo-600 text-white font-semibold rounded-lg transition-colors duration-300" id="cashout-button">
+                        Cash Out
+                    </button>
+                </div>
+            </div>
+
+            <!-- Watch Videos View -->
+            <div id="watch-videos-view" class="content-view" style="display: none;">
+                <div class="flex flex-col sm:flex-row gap-4 mb-6">
+                    <input type="text" id="search-bar" class="flex-grow px-4 py-2 rounded-full bg-card-bg border border-slate-700 focus:outline-none focus:ring-2 focus:ring-primary placeholder-muted-text" placeholder="Search videos...">
+                    <div class="flex flex-wrap justify-center sm:justify-end gap-2">
+                        <button class="filter-btn active px-4 py-2 rounded-full border border-primary bg-primary text-white text-sm hover:bg-primary/80 transition-colors duration-200" data-category="all">All</button>
+                        <button class="filter-btn px-4 py-2 rounded-full border border-slate-700 bg-card-bg text-sm hover:bg-slate-700 transition-colors duration-200" data-category="Nature">Nature</button>
+                        <button class="filter-btn px-4 py-2 rounded-full border border-slate-700 bg-card-bg text-sm hover:bg-slate-700 transition-colors duration-200" data-category="Education">Education</button>
+                        <button class="filter-btn px-4 py-2 rounded-full border border-slate-700 bg-card-bg text-sm hover:bg-slate-700 transition-colors duration-200" data-category="Travel">Travel</button>
+                        <button class="filter-btn px-4 py-2 rounded-full border border-slate-700 bg-card-bg text-sm hover:bg-slate-700 transition-colors duration-200" data-category="Food">Food</button>
+                        <button class="filter-btn px-4 py-2 rounded-full border border-slate-700 bg-card-bg text-sm hover:bg-slate-700 transition-colors duration-200" data-category="Gaming">Gaming</button>
+                    </div>
+                </div>
+                <!-- Ad Placement -->
+                <div class="flex justify-center mb-4">
+                    <script type='text/javascript' src='//pl27506647.profitableratecpm.com/25/d1/54/25d154cfe2cdfcc85914d10a0b4a6eae.js'></script>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6" id="video-grid">
+                    <!-- Video cards will be dynamically rendered here by JS -->
+                </div>
+            </div>
+            
+            <!-- Video Player View (New) -->
+            <div id="video-player-view" class="content-view" style="display: none;">
+                <button id="video-player-back-btn" class="mb-0 flex items-center gap-2 px-4 py-2 bg-primary hover:bg-indigo-600 rounded-lg text-white font-semibold transition-colors duration-200">
+                    <svg class="w-5 h-5 fill-current" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                    Back to Videos
+                </button>
+                <!-- Ad Placement under the 'Back to Videos' button -->
+                <div class="my-4">
+                    <script type="text/javascript">    
+                        atOptions = {  
+                            'key' : 'c6affa5f0ae4df4d56203646aa9bf458',  
+                            'format' : 'iframe',  
+                            'height' : 50,  
+                            'width' : 320,  
+                            'params' : {}  
+                        };  
+                    </script>   
+                    <script type="text/javascript" src="//www.highperformanceformat.com/c6affa5f0ae4df4d56203646aa9bf458/invoke.js"></script>
+                </div>
+                <div class="bg-card-bg p-0 rounded-xl shadow-md border border-slate-700">
+                    <div class="aspect-video w-full rounded-xl overflow-hidden mb-0">
+                        <iframe id="video-iframe" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen class="w-full h-full"></iframe>
+                    </div>
+                    <h2 class="text-2xl font-semibold mb-0" id="video-player-title"></h2>
+                    <p class="text-muted-text mb-2" id="video-player-description"></p>
+                    <div class="flex justify-between items-center">
+                        <button id="get-summary-btn" class="action-btn px-4 py-2 bg-secondary hover:bg-pink-500 text-white font-semibold rounded-lg transition-colors duration-200 text-sm">
+                            Get Summary ✨
+                        </button>
+                        <div id="summary-output" class="text-sm text-muted-text"></div>
+                    </div>
+                    <!-- Ad 2 Placement (Below Get Summary Button) -->
+                    <div class="mt-0">
+                         <script async="async" data-cfasync="false" src="//pl27490142.profitableratecpm.com/5fae19ca63dcfa0b73c6e2395f27545a/invoke.js"></script>
+                         <div id="container-5fae19ca63dcfa0b73c6e2395f27545a"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Social Tasks View (New) -->
+            <div id="social-tasks-view" class="content-view" style="display: none;">
+                <h2 class="text-xl font-semibold mb-4">Complete Social Tasks</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="social-tasks-grid">
+                    <!-- Social task cards will be dynamically rendered here by JS -->
+                    <div class="col-span-full text-center text-muted-text p-6">Loading tasks...</div>
+                </div>
+            </div>
+
+            <!-- Points History View -->
+            <div id="points-history-view" class="content-view" style="display: none;">
+                <div class="bg-card-bg p-6 rounded-xl shadow-md border border-slate-700">
+                    <h2 class="text-xl font-semibold mb-4">Points History</h2>
+                    <p class="text-muted-text mb-6">A record of all the points you have earned.</p>
+                    <div class="overflow-x-auto rounded-lg">
+                        <table class="w-full text-left table-auto">
+                            <thead class="bg-slate-700 text-slate-400 uppercase text-xs">
+                                <tr>
+                                    <th class="p-4 rounded-tl-lg">Date</th>
+                                    <th class="p-4">Description</th>
+                                    <th class="p-4 rounded-tr-lg">Points</th>
+                                </tr>
+                            </thead>
+                            <tbody id="points-history-table" class="divide-y divide-slate-700">
+                                <!-- Table rows will be dynamically rendered here by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- About View (New) -->
+            <div id="about-view" class="content-view" style="display: none;">
+                 <div class="bg-card-bg p-6 rounded-xl shadow-md border border-slate-700">
+                    <h2 class="text-xl font-semibold mb-4">Ping Rewards အကြောင်း</h2>
+                    <p class="text-muted-text mb-6">Ping Rewards ကို အသုံးပြုပုံ၊ စည်းကမ်းချက်များ နှင့် အခြား သိသင့်သည့် အချက်အလက်များ။</p>
+                    <div class="prose max-w-none text-text-color space-y-4">
+                        <h3 class="text-lg font-bold text-white">၁။ Web App အသုံးပြုနည်း</h3>
+                        <p>Ping Rewards သည် ဗီဒီယိုများကို ကြည့်ရှုခြင်း၊ Social Media Tasks များကို လုပ်ဆောင်ခြင်းဖြင့် အမှတ်များ စုဆောင်းနိုင်သော Web App တစ်ခုဖြစ်သည်။</p>
+                        <ul class="list-disc list-inside space-y-1">
+                            <li>**Login:** Google Account ဖြင့် အလွယ်တကူ ဝင်ရောက်နိုင်ပါသည်။</li>
+                            <li>**Watch Videos:** "Watch Videos" tab တွင် ဗီဒီယိုများ ရွေးချယ်ကြည့်ရှုခြင်းဖြင့် အမှတ်များ ရယူပါ။</li>
+                            <li>**Social Tasks:** "Social Tasks" tab တွင် ဖော်ပြထားသော Social Media Task များကို တစ်ကြိမ်လုပ်ဆောင်ခြင်းဖြင့် အမှတ်များ ရယူနိုင်ပါသည်။</li>
+                            <li>**Cash Out:** အမှတ်ပေါင်း 5000 ပြည့်ပါက</li>
+                            <li>**WavePay, KBZ Pay , Binance များဖြင့်  Cash Out ပြုလုပ်နိုင်ပါသည်။</li>
+                        </ul>
+                        <h3 class="text-lg font-bold text-white">၂။ စည်းကမ်းချက်များ</h3>
+                        <ul class="list-disc list-inside space-y-1">
+                            <li>တစ်ဦးလျှင် Account တစ်ခုသာ အသုံးပြုရမည်။ Account အတုများဖြင့် အလွဲသုံးစားပြုလုပ်ပါက အကောင့်ကို ပိတ်သိမ်းမည်။</li>
+                            <li>Fake View, Bot များကို အသုံးပြုခြင်း ခွင့်မပြုပါ။ တွေ့ရှိပါက အရေးယူဆောင်ရွက်မည်။</li>
+                            <li>Cash Out ပြုလုပ်ရာတွင် သင်၏ Payment Information ကို မှန်ကန်စွာ ဖြည့်သွင်းရမည်။</li>
+                            <li>စည်းကမ်းများကို မလိုက်နာပါက၊ အမှတ်များကို သိမ်းဆည်းခြင်း သို့မဟုတ် အကောင့်ကို ပိတ်သိမ်းခြင်း ပြုလုပ်ပါမည်။</li>
+                        </ul>
+                    </div>
+                 </div>
+            </div>
+            
+            <!-- Admin Dashboard View -->
+            <div id="admin-dashboard-view" class="content-view" style="display: none;">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6" id="admin-dashboard-grid">
+                    <div class="stat-card bg-card-bg p-6 rounded-xl shadow-md border border-slate-700 flex items-center">
+                        <div class="flex-shrink-0 w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mr-4">
+                            <svg class="w-6 h-6 fill-primary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                        </div>
+                        <div class="flex-grow">
+                            <h3 class="text-lg font-semibold text-muted-text">Total Users</h3>
+                            <div class="text-3xl font-bold" id="admin-total-users-value">0</div>
+                        </div>
+                    </div>
+                    <div class="stat-card bg-card-bg p-6 rounded-xl shadow-md border border-slate-700 flex items-center">
+                        <div class="flex-shrink-0 w-12 h-12 rounded-full bg-accent-purple/20 flex items-center justify-center mr-4">
+                            <svg class="w-6 h-6 fill-accent-purple" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 16.5l6-4.5-6-4.5v9zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
+                        </div>
+                        <div class="flex-grow">
+                            <h3 class="text-lg font-semibold text-muted-text">Total Videos</h3>
+                            <div class="text-3xl font-bold" id="admin-total-videos-value">0</div>
+                        </div>
+                    </div>
+                    <div class="stat-card bg-card-bg p-6 rounded-xl shadow-md border border-slate-700 flex items-center">
+                        <div class="flex-shrink-0 w-12 h-12 rounded-full bg-accent-green/20 flex items-center justify-center mr-4">
+                            <svg class="w-6 h-6 fill-accent-green" xmlns="http://www.w3.org/2d00/svg" viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4V8h16v10zm-12-7h4v2H8v-2zm-2-2v6h12V6H6z"/></svg>
+                        </div>
+                        <div class="flex-grow">
+                            <h3 class="text-lg font-semibold text-muted-text">Total Points Earned</h3>
+                            <div class="text-3xl font-bold" id="admin-total-points-earned-value">0</div>
+                        </div>
+                    </div>
+                    <div class="stat-card bg-card-bg p-6 rounded-xl shadow-md border border-slate-700 flex items-center cursor-pointer" id="admin-payouts-card">
+                        <div class="flex-shrink-0 w-12 h-12 rounded-full bg-accent-orange/20 flex items-center justify-center mr-4">
+                            <svg class="w-6 h-6 fill-accent-orange" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4V8h16v10zm-12-7h4v2H8v-2zm-2-2v6h12V6H6z"/></svg>
+                        </div>
+                        <div class="flex-grow">
+                            <h3 class="text-lg font-semibold text-muted-text">Total Payouts</h3>
+                            <div class="text-3xl font-bold" id="admin-total-payouts-value">$0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-card-bg p-6 rounded-xl shadow-md border border-slate-700">
+                    <h2 class="text-xl font-semibold mb-4">Weekly Watch History (Hours)</h2>
+                    <div class="relative h-64 flex items-end pb-8 border-l-2 border-b-2 border-slate-600">
+                        <span class="absolute left-0 top-0 text-sm text-muted-text -ml-6 -mt-2">8</span>
+                        <span class="absolute left-0 bottom-0 text-sm text-muted-text -ml-6 -mb-4">0</span>
+                        <div class="bar-chart flex items-end h-full w-full" id="weekly-watch-chart">
+                            <!-- Bars will be dynamically updated by JS -->
+                            <div class="w-1/7 h-1/2 mx-1 bg-primary rounded-t-full transition-all duration-500 ease-in-out relative group" style="height: 50%;">
+                                <span class="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-sm text-muted-text">Mon</span>
+                            </div>
+                            <div class="w-1/7 h-[38%] mx-1 bg-primary rounded-t-full transition-all duration-500 ease-in-out relative group" style="height: 38%;">
+                                <span class="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-sm text-muted-text">Tue</span>
+                            </div>
+                            <div class="w-1/7 h-[60%] mx-1 bg-primary rounded-t-full transition-all duration-500 ease-in-out relative group" style="height: 60%;">
+                                <span class="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-sm text-muted-text">Wed</span>
+                            </div>
+                            <div class="w-1/7 h-[54%] mx-1 bg-primary rounded-t-full transition-all duration-500 ease-in-out relative group" style="height: 54%;">
+                                <span class="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-sm text-muted-text">Thu</span>
+                            </div>
+                            <div class="w-1/7 h-[70%] mx-1 bg-primary rounded-t-full transition-all duration-500 ease-in-out relative group" style="height: 70%;">
+                                <span class="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-sm text-muted-text">Fri</span>
+                            </div>
+                            <div class="w-1/7 h-[98%] mx-1 bg-primary rounded-t-full transition-all duration-500 ease-in-out relative group" style="height: 98%;">
+                                <span class="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-sm text-muted-text">Sat</span>
+                            </div>
+                            <div class="w-1/7 h-[85%] mx-1 bg-primary rounded-t-full transition-all duration-500 ease-in-out relative group" style="height: 85%;">
+                                <span class="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-sm text-muted-text">Sun</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Manage Videos View -->
+            <div id="manage-videos-view" class="content-view" style="display: none;">
+                <div class="bg-card-bg p-6 rounded-xl shadow-md border border-slate-700">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-semibold">Manage Videos</h2>
+                        <button id="add-video-btn" class="px-4 py-2 bg-primary hover:bg-indigo-600 rounded-lg text-white font-semibold transition-colors duration-200">
+                            Add New Video
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto rounded-lg">
+                        <table class="w-full text-left table-auto">
+                            <thead class="bg-slate-700 text-slate-400 uppercase text-xs">
+                                <tr>
+                                    <th class="p-4 rounded-tl-lg">Title</th>
+                                    <th class="p-4">Category</th>
+                                    <th class="p-4">Points</th>
+                                    <th class="p-4 rounded-tr-lg">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="videos-table" class="divide-y divide-slate-700">
+                                <!-- Table rows will be dynamically rendered here by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Manage Social Tasks View (New) -->
+            <div id="manage-social-tasks-view" class="content-view" style="display: none;">
+                <div class="bg-card-bg p-6 rounded-xl shadow-md border border-slate-700">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-semibold">Manage Social Tasks</h2>
+                        <button id="add-social-task-btn" class="px-4 py-2 bg-primary hover:bg-indigo-600 rounded-lg text-white font-semibold transition-colors duration-200">
+                            Add New Task
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto rounded-lg">
+                        <table class="w-full text-left table-auto">
+                            <thead class="bg-slate-700 text-slate-400 uppercase text-xs">
+                                <tr>
+                                    <th class="p-4 rounded-tl-lg">Task Title</th>
+                                    <th class="p-4">Platform</th>
+                                    <th class="p-4">Link</th>
+                                    <th class="p-4">Points</th>
+                                    <th class="p-4 rounded-tr-lg">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="social-tasks-table" class="divide-y divide-slate-700">
+                                <!-- Table rows will be dynamically rendered here by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Manage Users View -->
+            <div id="manage-users-view" class="content-view" style="display: none;">
+                <div class="bg-card-bg p-6 rounded-xl shadow-md border border-slate-700">
+                    <h2 class="text-xl font-semibold mb-2">Manage Users</h2>
+                    <p class="text-muted-text mb-6">View user data, manage status, and edit information.</p>
+                    <div class="overflow-x-auto rounded-lg">
+                        <table class="w-full text-left table-auto">
+                            <thead class="bg-slate-700 text-slate-400 uppercase text-xs">
+                                <tr>
+                                    <th class="p-4 rounded-tl-lg">User ID</th>
+                                    <th class="p-4">Name</th>
+                                    <th class="p-4">Email</th>
+                                    <th class="p-4">Role</th>
+                                    <th class="p-4">Points</th>
+                                    <th class="p-4 rounded-tr-lg">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-table-body" class="divide-y divide-slate-700">
+                                <!-- User rows will be dynamically rendered here by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modal for Cash Out Confirmation Message -->
+        <div id="cashout-message-modal" class="modal-overlay fixed inset-0 flex justify-center items-center z-[1000] hidden">
+            <div class="modal-content bg-card-bg p-8 rounded-xl w-11/12 max-w-lg shadow-2xl border border-slate-700">
+                <h3 class="text-xl font-semibold mb-4">Cash Out Request</h3>
+                <p id="cashout-message-text" class="text-muted-text mb-6">You need 5000 points to cash out.</p>
+                <div class="flex justify-end gap-2">
+                    <button type="button" class="px-4 py-2 bg-slate-600 hover:bg-slate-500 rounded-lg text-white font-semibold transition-colors duration-200" id="cashout-message-close-btn">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal for Delete Confirmation -->
+        <div id="delete-confirm-modal" class="modal-overlay fixed inset-0 flex justify-center items-center z-[1000] hidden">
+            <div class="modal-content bg-card-bg p-8 rounded-xl w-11/12 max-w-lg shadow-2xl border border-slate-700">
+                <h3 id="delete-modal-title" class="text-xl font-semibold mb-4">Are you sure you want to delete this video?</h3>
+                <p class="text-muted-text mb-6">This action cannot be undone.</p>
+                <div class="flex justify-end gap-2">
+                    <button type="button" class="px-4 py-2 bg-slate-600 hover:bg-slate-500 rounded-lg text-white font-semibold transition-colors duration-200">Cancel</button>
+                    <button type="button" class="px-4 py-2 bg-red-600 hover:bg-red-500 rounded-lg text-white font-semibold transition-colors duration-200" id="confirm-delete-btn">Delete</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modal for Viewing User History / Payout History -->
+        <div id="history-modal" class="modal-overlay fixed inset-0 flex justify-center items-center z-[1000] hidden">
+            <div class="modal-content bg-card-bg p-8 rounded-xl w-11/12 max-w-3xl shadow-2xl border border-slate-700">
+                <h3 id="history-modal-title" class="text-xl font-semibold mb-4"></h3>
+                <div id="history-modal-content" class="overflow-y-auto max-h-[70vh] rounded-lg">
+                     <table class="w-full text-left table-auto">
+                         <thead class="bg-slate-700 text-slate-400 uppercase text-xs">
+                             <tr id="history-table-header">
+                                 <!-- Table headers will be dynamically rendered here -->
+                             </tr>
+                         </thead>
+                         <tbody id="history-table-body" class="divide-y divide-slate-700">
+                             <!-- History rows will be dynamically rendered here by JS -->
+                         </tbody>
+                     </table>
+                </div>
+                <div class="flex justify-end gap-2 mt-6">
+                    <button type="button" class="px-4 py-2 bg-slate-600 hover:bg-slate-500 rounded-lg text-white font-semibold transition-colors duration-200" id="history-modal-close-btn">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal for Adding/Editing Videos (Hidden by default) -->
+        <div id="add-video-modal" class="modal-overlay fixed inset-0 flex justify-center items-center z-[1000] hidden">
+            <div class="modal-content bg-card-bg p-8 rounded-xl w-11/12 max-w-lg shadow-2xl border border-slate-700">
+                <h3 id="modal-title" class="text-xl font-semibold mb-4">Add New Video</h3>
+                <form id="add-video-form" class="modal-form space-y-4">
+                    <div>
+                        <label for="video-title" class="block text-sm font-medium mb-1">Video Title</label>
+                        <input type="text" id="video-title" name="videoTitle" required class="w-full px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary">
+                    </div>
+                    <div>
+                        <label for="video-description" class="block text-sm font-medium mb-1">Description</label>
+                        <textarea id="video-description" name="videoDescription" rows="3" required class="w-full px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary"></textarea>
+                    </div>
+                    <div>
+                        <label for="video-category" class="block text-sm font-medium mb-1">Category</label>
+                        <select id="video-category" name="videoCategory" required class="w-full px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary">
+                            <option value="YouTube">YouTube</option>
+                            <option value="TikTok">TikTok</option>
+                            <option value="Facebook">Facebook</option>
+                            <option value="Nature">Nature</option>
+                            <option value="Education">Education</option>
+                            <option value="Travel">Travel</option>
+                            <option value="Food">Food</option>
+                            <option value="Gaming">Gaming</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="video-url" class="block text-sm font-medium mb-1">Video URL (YouTube Embed Link)</label>
+                        <input type="text" id="video-url" name="videoUrl" required class="w-full px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary">
+                    </div>
+                    <div>
+                        <label for="video-points" class="block text-sm font-medium mb-1">Points</label>
+                        <input type="number" id="video-points" name="videoPoints" required class="w-full px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary">
+                    </div>
+                    <div>
+                        <label for="watch-duration" class="block text-sm font-medium mb-1">Watch Duration (Seconds)</label>
+                        <input type="number" id="watch-duration" name="watchDuration" required class="w-full px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary">
+                    </div>
+                    <div class="flex justify-end gap-2 pt-4">
+                        <button type="button" class="cancel-btn px-4 py-2 bg-slate-600 hover:bg-slate-500 rounded-lg text-white font-semibold transition-colors duration-200">Cancel</button>
+                        <button type="submit" class="save-btn px-4 py-2 bg-primary hover:bg-indigo-600 rounded-lg text-white font-semibold transition-colors duration-200">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Modal for Adding/Editing Social Tasks (New) -->
+        <div id="add-social-task-modal" class="modal-overlay fixed inset-0 flex justify-center items-center z-[1000] hidden">
+            <div class="modal-content bg-card-bg p-8 rounded-xl w-11/12 max-w-lg shadow-2xl border border-slate-700">
+                <h3 id="social-task-modal-title" class="text-xl font-semibold mb-4">Add New Social Task</h3>
+                <form id="add-social-task-form" class="modal-form space-y-4">
+                    <div>
+                        <label for="social-task-title" class="block text-sm font-medium mb-1">Task Title</label>
+                        <input type="text" id="social-task-title" name="taskTitle" required class="w-full px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary">
+                    </div>
+                    <div>
+                        <label for="social-task-platform" class="block text-sm font-medium mb-1">Platform</label>
+                        <select id="social-task-platform" name="taskPlatform" required class="w-full px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary">
+                            <option value="YouTube">YouTube</option>
+                            <option value="Facebook">Facebook</option>
+                            <option value="TikTok">TikTok</option>
+                            <option value="Telegram">Telegram</option>
+                            <option value="Twitter">Twitter</option>
+                            <option value="Web">Web</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="social-task-link" class="block text-sm font-medium mb-1">Link URL</label>
+                        <input type="url" id="social-task-link" name="taskLink" required class="w-full px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary">
+                    </div>
+                    <div>
+                        <label for="social-task-points" class="block text-sm font-medium mb-1">Points</label>
+                        <input type="number" id="social-task-points" name="taskPoints" required class="w-full px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary">
+                    </div>
+                    <div class="flex justify-end gap-2 pt-4">
+                        <button type="button" class="cancel-btn px-4 py-2 bg-slate-600 hover:bg-slate-500 rounded-lg text-white font-semibold transition-colors duration-200">Cancel</button>
+                        <button type="submit" class="save-btn px-4 py-2 bg-primary hover:bg-indigo-600 rounded-lg text-white font-semibold transition-colors duration-200">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Cash Out Modal (New) -->
+        <div id="cashout-modal" class="modal-overlay fixed inset-0 flex justify-center items-center z-[1000] hidden">
+            <div class="modal-content bg-card-bg p-8 rounded-xl w-11/12 max-w-lg shadow-2xl border border-slate-700">
+                <h3 class="text-xl font-semibold mb-4">Cash Out Request</h3>
+                <form id="cashout-form" class="modal-form space-y-4">
+                    <p class="text-muted-text">Please enter your payment details to receive your earnings.</p>
+                    <div>
+                        <label for="payment-method" class="block text-sm font-medium mb-1">Payment Method</label>
+                        <select id="payment-method" name="paymentMethod" class="w-full px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary">
+                            <option value="KBZ Pay">KBZ Pay</option>
+                            <option value="Wave Pay">Wave Pay</option>
+                            <option value="Binance Pay">Binance Pay</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="payout-amount" class="block text-sm font-medium mb-1">Amount ($)</label>
+                        <input type="number" id="payout-amount" name="payoutAmount" value="0.00" readonly class="w-full px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 text-muted-text cursor-not-allowed">
+                    </div>
+                    <div class="flex justify-end gap-2 pt-4">
+                        <button type="button" class="cancel-btn px-4 py-2 bg-slate-600 hover:bg-slate-500 rounded-lg text-white font-semibold transition-colors duration-200">Cancel</button>
+                        <button type="submit" class="save-btn px-4 py-2 bg-primary hover:bg-indigo-600 rounded-lg text-white font-semibold transition-colors duration-200" id="cashout-submit-btn">Submit Request</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signOut, signInAnonymously, GoogleAuthProvider, signInWithPopup, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        // Import arrayUnion for updating arrays in Firestore
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, where, addDoc, getDocs, deleteDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        document.addEventListener('DOMContentLoaded', async () => {
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+            
+            // --- ပြင်ဆင်ပြီး ---
+            // GitHub Pages အတွက် Firebase Configuration
+            const firebaseConfig = typeof __firebase_config !== 'undefined'
+                ? JSON.parse(__firebase_config)
+                : {
+                    apiKey: "AIzaSyBKHF_6NIFD0-zrceg3BFJBdhJcFoXiKmA",
+                    authDomain: "ping-rewards.firebaseapp.com",
+                    projectId: "ping-rewards",
+                    storageBucket: "ping-rewards.firebasestorage.app",
+                    messagingSenderId: "1001465713586",
+                    appId: "1:1001465713586:web:07b8e1a2fb685614ac8aab",
+                    measurementId: "G-RJD7MPSSWF"
+                };
+
+            const app = initializeApp(firebaseConfig);
+            const db = getFirestore(app);
+            const auth = getAuth(app);
+            
+            let userId = null;
+            let isAuthReady = false;
+
+            const loginPage = document.getElementById('login-page');
+            const appContainer = document.getElementById('app-container');
+            const googleSignInBtn = document.getElementById('google-sign-in-btn');
+            const loginMessage = document.getElementById('login-message');
+            const loadingOverlay = document.getElementById('loading-overlay');
+            
+            const navLinks = document.querySelectorAll('.nav-link');
+            const views = document.querySelectorAll('.content-view');
+            const pageTitle = document.getElementById('page-title');
+            const headerMeta = document.getElementById('header-meta');
+            const sidebarProfile = document.getElementById('sidebar-profile');
+
+            const videoGrid = document.getElementById('video-grid');
+            const searchBar = document.getElementById('search-bar');
+            const filterButtons = document.querySelectorAll('.filter-btn');
+            const videoPlayerView = document.getElementById('video-player-view');
+            const videoIframe = document.getElementById('video-iframe');
+            const videoPlayerBackBtn = document.getElementById('video-player-back-btn');
+            const videoPlayerTitle = document.getElementById('video-player-title');
+            const videoPlayerDescription = document.getElementById('video-player-description');
+            
+            const sidebar = document.getElementById('sidebar');
+            const menuToggleBtn = document.getElementById('menu-toggle');
+            const backdrop = document.getElementById('backdrop');
+
+            const addVideoBtn = document.getElementById('add-video-btn');
+            const addVideoModal = document.getElementById('add-video-modal');
+            const addVideoForm = document.getElementById('add-video-form');
+            const addModalTitle = document.getElementById('modal-title');
+            const videoTableBody = document.querySelector('#videos-table');
+            const getSummaryBtn = document.getElementById('get-summary-btn');
+            const summaryOutput = document.getElementById('summary-output');
+            
+            // Social task related elements
+            const socialTasksGrid = document.getElementById('social-tasks-grid');
+            const addSocialTaskBtn = document.getElementById('add-social-task-btn');
+            const addSocialTaskModal = document.getElementById('add-social-task-modal');
+            const addSocialTaskForm = document.getElementById('add-social-task-form');
+            const socialTaskTableBody = document.querySelector('#social-tasks-table');
+            const socialTaskModalTitle = document.getElementById('social-task-modal-title');
+            
+            // Cash out and history related elements
+            const cashoutBtn = document.getElementById('cashout-button');
+            const cashoutModal = document.getElementById('cashout-modal');
+            const cashoutForm = document.getElementById('cashout-form');
+            const totalPointsValue = document.getElementById('total-points-value');
+            const estimatedEarningsValue = document.getElementById('estimated-earnings-value');
+            const videosWatchedValue = document.getElementById('videos-watched-value');
+            const pointsHistoryTableBody = document.querySelector('#points-history-table');
+            const cashoutMessageModal = document.getElementById('cashout-message-modal');
+            const cashoutMessageText = document.getElementById('cashout-message-text');
+            const cashoutMessageCloseBtn = document.getElementById('cashout-message-close-btn');
+
+            // Admin related elements
+            const adminTotalUsersValue = document.getElementById('admin-total-users-value');
+            const adminTotalVideosValue = document.getElementById('admin-total-videos-value');
+            const adminTotalPointsEarnedValue = document.getElementById('admin-total-points-earned-value');
+            const adminTotalPayoutsValue = document.getElementById('admin-total-payouts-value');
+            const adminPayoutsCard = document.getElementById('admin-payouts-card');
+            
+            const welcomeMessage = document.getElementById('welcome-message');
+            
+            const deleteConfirmModal = document.getElementById('delete-confirm-modal');
+            const deleteConfirmBtn = document.getElementById('confirm-delete-btn');
+            
+            const usersTableBody = document.getElementById('users-table-body');
+            const historyModal = document.getElementById('history-modal');
+            const historyModalTitle = document.getElementById('history-modal-title');
+            const historyTableBody = document.getElementById('history-table-body');
+            const historyModalCloseBtn = document.getElementById('history-modal-close-btn');
+            const historyTableHeader = document.getElementById('history-table-header');
+            
+            let videos = [];
+            let socialTasks = []; // New array to hold social tasks
+            let currentUser = null;
+            let userData = null;
+            let videoCardToAnimate = null;
+
+            const adminEmail = 'mr.ping2025@gmail.com';
+            
+            // Utility function to get social media icons
+            function getSocialIcon(platform) {
+                switch(platform) {
+                    case 'Facebook': return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" class="fill-blue-600"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c5.29 0 9.77-4.14 10-9.43.14-2.85-2.06-5.26-4.91-5.74v2.02c1.78.4 3.12 1.93 3.12 3.82 0 2.11-1.79 3.82-3.99 3.82H12v-6.93l-3 3v2.93h-1v-6h-2v6.93l1.85-1.85c.19-.19.45-.3.72-.3s.53.11.72.3L12 14.07V12h3.99c1.66 0 3-1.34 3-3s-1.34-3-3-3h-3c-1.1 0-2 .9-2 2v1H9v2h2v1H8c-2.21 0-4-1.79-4-4s1.79-4 4-4h4V2z"/></svg>`;
+                    case 'TikTok': return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" class="fill-black dark:fill-white"><path d="M12.758 2.043l-.158.012c-1.42 0-2.585 1.164-2.585 2.585v15.728l-.16.012h-.008c-.768.04-1.455.334-2.02.825-1.127.994-1.82 2.766-1.82 4.697 0 3.242 2.632 5.875 5.875 5.875 3.243 0 5.875-2.633 5.875-5.875 0-1.93-.693-3.703-1.82-4.696-.564-.49-1.25-.785-2.018-.825h-.008L12.758 2.043zM12 24c-6.627 0-12-5.373-12-12s5.373-12 12-12c6.627 0 12 5.373 12 12s-5.373 12-12 12zm-3-19c0 .552-.448 1-1 1s-1-.448-1-1v-2c0-.552.448-1 1-1s1 .448 1 1v2zm0 17c-2.761 0-5-2.239-5-5s2.239-5 5-5 5 2.239 5 5-2.239 5-5 5zm9-11c0-.552-.448-1-1-1s-1 .448-1 1v2c0 .552.448 1 1 1s1-.448 1-1v-2zm-9 9c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3z"/></svg>`;
+                    case 'Telegram': return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" class="fill-blue-500"><path d="M18.3 5.4c-.6-.3-1.2-.5-1.9-.5c-.8 0-1.5.2-2.1.6c-.6.4-1 .9-1.3 1.5c-.3.6-.4 1.3-.4 2s.1 1.4.4 2.1c.3.6.7 1.1 1.3 1.5c.6.4 1.2.6 2.1.6c.7 0 1.4-.2 1.9-.5c.6-.3 1.1-.8 1.4-1.4c.3-.6.4-1.2.4-1.9s-.1-1.3-.4-1.9c-.3-.6-.8-1.1-1.4-1.4zM22 6.5l-3.3 12c-.2.9-.8 1.4-1.8 1.4c-.6 0-1.2-.2-1.6-.4l-5.6-3.8c-.5-.3-.9-.6-1.1-.9c-.2-.3-.3-.7-.3-1.1c0-.4.1-.8.3-1.1s.5-.6 1.1-.9l8.6-4.9c.2-.1.4-.2.6-.2c.2 0 .4.1.6.2s.2.4.2.6zM2 12c0 2.2 1.3 4.2 3.3 5.3L4 20l3.8-1.1c.9.2 1.8.3 2.7.3c1.7 0 3.3-.6 4.6-1.7l.7-.6c-.2-.4-.3-.8-.3-1.2c0-1.3.6-2.5 1.7-3.3c1.1-.8 2.5-1.2 4-1.2c-.4-3.1-2.2-5.4-4.8-6.5c-2.4-1-5.1-1.2-7.8-.6c-3 .7-5.3 3.3-5.3 6.6z"/></svg>`;
+                    case 'Twitter': return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" class="fill-blue-400"><path d="M22.46 6c-.77.34-1.6.57-2.46.69.88-.53 1.55-1.37 1.87-2.36-.83.49-1.74.85-2.72 1.05-2.02-2.15-5.35-2.07-7.29.17-1.18 1.32-1.65 3.12-1.36 4.95C5.83 10.66 2.92 8.75 1.12 5.92c-.37.64-.58 1.39-.58 2.19 0 1.52.77 2.87 1.94 3.66-2.01-.06-3.89-.6-5.54-1.52v.04c0 1.92 1.37 3.51 3.19 3.87-.33.09-.67.14-1.02.14-.25 0-.5-.02-.74-.07.5 1.63 2.07 2.81 3.89 2.84-1.4 1.1-3.17 1.75-5.09 1.75-.33 0-.66-.02-.98-.06 1.8 1.15 3.93 1.81 6.22 1.81 7.52 0 11.63-6.22 11.63-11.62 0-.17-.0-.35-.01-.52.8-.57 1.49-1.28 2.04-2.07z"/></svg>`;
+                    case 'YouTube': return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" class="fill-red-600"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm3 10l-6 4V8l6 4z"/></svg>`;
+                    case 'Web': return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" class="fill-gray-400"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15h2v-2h-2v2zm0-4h2V7h-2v6z"/></svg>`;
+                    default: return '';
+                }
+            }
+            
+            // Utility function to extract YouTube video ID from a URL
+            function getYouTubeId(url) {
+                try {
+                    const urlObj = new URL(url);
+                    if (urlObj.hostname.includes('youtube.com')) {
+                        return urlObj.searchParams.get('v');
+                    } else if (urlObj.hostname.includes('youtu.be')) {
+                        return urlObj.pathname.substring(1);
+                    }
+                } catch (e) {
+                    console.error("Invalid URL:", url);
+                }
+                return null;
+            }
+
+            // Function to get a YouTube thumbnail
+            function getYouTubeThumbnail(videoId) {
+                if (videoId) {
+                    return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+                }
+                return 'https://placehold.co/400x225/1f3148/ffffff?text=Video';
+            }
+            
+            async function seedInitialData(user) {
+                try {
+                    if (!user) {
+                         console.log("No authenticated user to seed data for. Skipping user seed.");
+                         return;
+                    }
+                    const userId = user.uid;
+                    const userDocRef = doc(db, `/artifacts/${appId}/users/${userId}`);
+                    const userDocSnap = await getDoc(userDocRef);
+                    if (!userDocSnap.exists()) {
+                         let userRole = 'user';
+                         let userName = user.displayName || (user.email ? user.email.split('@')[0] : 'Ping User');
+                         if (user.email === adminEmail) {
+                             userRole = 'admin';
+                             userName = 'Mr. Ping';
+                         }
+                         await setDoc(userDocRef, {
+                            name: userName,
+                            email: user.email || '',
+                            role: userRole,
+                            points: 0,
+                            pointsHistory: [],
+                            payoutHistory: [],
+                            watchedVideos: [], // New field to track watched videos
+                            completedSocialTasks: [] // New field to track completed social tasks
+                         });
+                         console.log("Seeding initial user data.");
+                    }
+
+                    if (user.email === adminEmail) {
+                        // Seeding initial videos
+                        const videosCollectionRef = collection(db, `/artifacts/${appId}/public/data/videos`);
+                        const videosSnapshot = await getDocs(videosCollectionRef);
+                        if (videosSnapshot.empty) {
+                            const initialVideos = [
+                                { id: 'vid1', title: "The Beauty of Nature", category: "Nature", points: 12, watchDuration: 10, description: "A breathtaking journey through mountains and forests.", videoUrl: "https://www.youtube.com/embed/g2J03u13kXg" },
+                                { id: 'vid2', title: "Learn React in 30 Seconds", category: "Education", points: 25, watchDuration: 15, description: "A quick overview of React hooks.", videoUrl: "https://www.youtube.com/embed/Ke90Tje7VS0" },
+                                { id: 'vid3', title: "City Life at Night", category: "Travel", points: 75, watchDuration: 20, description: "Explore the vibrant life of a metropolis after dark.", videoUrl: "https://www.youtube.com/embed/5a-H_gqM_9E" },
+                                { id: 'vid4', title: "Cooking a Perfect Steak", category: "Food", points: 60, watchDuration: 10, description: "A step by step guide to cooking steak.", videoUrl: "https://www.youtube.com/embed/H0d82C7YjA8" },
+                                { id: 'vid5', title: "Gaming Highlights of the Week", category: "Gaming", points: 40, watchDuration: 10, description: "The best moments in esports.", videoUrl: "https://www.youtube.com/embed/d-Yq36_9tQ0" }
+                            ];
+                            for (const video of initialVideos) {
+                                await setDoc(doc(videosCollectionRef, video.id), {
+                                    title: video.title,
+                                    category: video.category,
+                                    points: video.points,
+                                    watchDuration: video.watchDuration,
+                                    description: video.description,
+                                    videoUrl: video.videoUrl
+                                });
+                            }
+                            console.log("Seeding initial video data.");
+                        }
+                        
+                        // Seeding initial social tasks
+                        const socialTasksCollectionRef = collection(db, `/artifacts/${appId}/public/data/socialTasks`);
+                        const socialTasksSnapshot = await getDocs(socialTasksCollectionRef);
+                        if (socialTasksSnapshot.empty) {
+                             const initialSocialTasks = [
+                                 { id: 'task1', title: 'Follow us on Facebook', platform: 'Facebook', link: 'https://facebook.com/pingrewards', points: 100 },
+                                 { id: 'task2', title: 'Follow us on Telegram', platform: 'Telegram', link: 'https://t.me/pingrewards', points: 150 },
+                                 { id: 'task3', title: 'Follow us on TikTok', platform: 'TikTok', link: 'https://tiktok.com/@pingrewards', points: 120 },
+                                 { id: 'task4', title: 'Subscribe to our YouTube', platform: 'YouTube', link: 'https://www.youtube.com/@pingrewards', points: 200 },
+                             ];
+                             for (const task of initialSocialTasks) {
+                                 await setDoc(doc(socialTasksCollectionRef, task.id), task);
+                             }
+                             console.log("Seeding initial social task data.");
+                        }
+                    }
+                } catch (error) {
+                    console.error("Error seeding data: ", error);
+                }
+            }
+
+            async function fetchUserData(uid) {
+                const userDocRef = doc(db, `/artifacts/${appId}/users/${uid}`);
+                onSnapshot(userDocRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        userData = docSnap.data();
+                        currentUser = {
+                            name: userData.name,
+                            email: userData.email,
+                            role: userData.role
+                        };
+                        updateUI(currentUser.role);
+                        console.log("User data updated:", userData);
+                    } else {
+                        console.log("User data not found for a logged-in user. This should not happen if `seedInitialData` ran correctly.");
+                        hideLoading();
+                    }
+                }, (error) => {
+                    console.error("Error listening to user data:", error);
+                    hideLoading();
+                });
+            }
+
+            async function fetchVideos() {
+                showLoading();
+                try {
+                    const videosCollectionRef = collection(db, `/artifacts/${appId}/public/data/videos`);
+                    const q = query(videosCollectionRef);
+                    const querySnapshot = await getDocs(q);
+                    videos = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    console.log("Videos fetched from Firestore:", videos);
+                } catch (e) {
+                    console.error("Error fetching videos:", e);
+                } finally {
+                    hideLoading();
+                }
+            }
+
+            // Function to fetch social tasks from Firestore
+            async function fetchSocialTasks() {
+                 showLoading();
+                 try {
+                     const socialTasksCollectionRef = collection(db, `/artifacts/${appId}/public/data/socialTasks`);
+                     const q = query(socialTasksCollectionRef);
+                     const querySnapshot = await getDocs(q);
+                     socialTasks = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                     console.log("Social tasks fetched from Firestore:", socialTasks);
+                 } catch (e) {
+                     console.error("Error fetching social tasks:", e);
+                 } finally {
+                     hideLoading();
+                 }
+            }
+            
+            async function fetchAllUsers() {
+                showLoading();
+                if (!usersTableBody) return;
+                usersTableBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-muted-text">Fetching users...</td></tr>`;
+                try {
+                    const usersCollectionRef = collection(db, `/artifacts/${appId}/users`);
+                    const querySnapshot = await getDocs(usersCollectionRef);
+                    const users = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    renderUsersTable(users);
+                } catch (e) {
+                    console.error("Error fetching users:", e);
+                    usersTableBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-500">Error fetching users.</td></tr>`;
+                } finally {
+                    hideLoading();
+                }
+            }
+            
+            async function toggleUserRole(targetUserId, currentRole) {
+                const userDocRef = doc(db, `/artifacts/${appId}/users/${targetUserId}`);
+                const newRole = currentRole === 'admin' ? 'user' : 'admin';
+                try {
+                    await updateDoc(userDocRef, { role: newRole });
+                    console.log(`User role updated to ${newRole}`);
+                } catch (e) {
+                    console.error("Error updating user role:", e);
+                }
+            }
+
+            // Updates user points in Firestore and adds a new history entry
+            async function updatePointsInFirestore(pointsToAdd, description, id, type = 'video') {
+                if (!userData || !userId) return;
+                showLoading();
+                try {
+                    const userDocRef = doc(db, `/artifacts/${appId}/users/${userId}`);
+                    const newPoints = userData.points + pointsToAdd;
+                    const newHistory = [...(userData.pointsHistory || []), {
+                        date: new Date().toLocaleDateString('en-US'),
+                        description: description,
+                        points: pointsToAdd
+                    }];
+
+                    const updateData = {
+                        points: newPoints,
+                        pointsHistory: newHistory,
+                    };
+                    
+                    // Add to the appropriate watched/completed list based on type
+                    if (type === 'video') {
+                       updateData.watchedVideos = arrayUnion(id);
+                    } else if (type === 'social') {
+                       updateData.completedSocialTasks = arrayUnion(id);
+                    }
+                    
+                    await updateDoc(userDocRef, updateData);
+                    console.log("Points and history updated in Firestore.");
+                } catch (e) {
+                    console.error("Error updating points:", e);
+                } finally {
+                    hideLoading();
+                }
+            }
+            
+            async function saveVideo(videoData, videoId = null) {
+                showLoading();
+                try {
+                    const videosCollectionRef = collection(db, `/artifacts/${appId}/public/data/videos`);
+                    if (videoId) {
+                        const videoDocRef = doc(db, videosCollectionRef.path, videoId);
+                        await setDoc(videoDocRef, videoData, { merge: true });
+                        console.log("Video updated:", videoId);
+                    } else {
+                        await addDoc(videosCollectionRef, videoData);
+                        console.log("Video added successfully.");
+                    }
+                } catch (e) {
+                    console.error("Error saving video:", e);
+                } finally {
+                    hideLoading();
+                }
+                await fetchVideos(); 
+                renderManageVideosTable();
+                const activeFilterBtn = document.querySelector('#watch-videos-view .filter-btn.active');
+                if (activeFilterBtn) {
+                   renderVideoGrid(activeFilterBtn.getAttribute('data-category'));
+                } else {
+                   renderVideoGrid('all');
+                }
+            }
+            
+            // Function to save or update a social task
+            async function saveSocialTask(taskData, taskId = null) {
+                 showLoading();
+                 try {
+                     const tasksCollectionRef = collection(db, `/artifacts/${appId}/public/data/socialTasks`);
+                     if (taskId) {
+                         const taskDocRef = doc(db, tasksCollectionRef.path, taskId);
+                         await setDoc(taskDocRef, taskData, { merge: true });
+                         console.log("Social task updated:", taskId);
+                     } else {
+                         await addDoc(tasksCollectionRef, taskData);
+                         console.log("Social task added successfully.");
+                     }
+                 } catch (e) {
+                     console.error("Error saving social task:", e);
+                 } finally {
+                     hideLoading();
+                 }
+                 await fetchSocialTasks();
+                 renderManageSocialTasksTable();
+                 renderSocialTasksGrid();
+            }
+
+            async function deleteVideo(videoId) {
+                showLoading();
+                try {
+                    const videoDocRef = doc(db, `/artifacts/${appId}/public/data/videos`, videoId);
+                    await deleteDoc(videoDocRef);
+                    console.log("Video deleted:", videoId);
+                } catch (e) {
+                    console.error("Error deleting video:", e);
+                } finally {
+                    hideLoading();
+                }
+                await fetchVideos();
+                renderManageVideosTable();
+                const activeFilterBtn = document.querySelector('#watch-videos-view .filter-btn.active');
+                if (activeFilterBtn) {
+                     renderVideoGrid(activeFilterBtn.getAttribute('data-category'));
+                } else {
+                    renderVideoGrid('all');
+                }
+            }
+
+            // Function to delete a social task
+            async function deleteSocialTask(taskId) {
+                 showLoading();
+                 try {
+                     const taskDocRef = doc(db, `/artifacts/${appId}/public/data/socialTasks`, taskId);
+                     await deleteDoc(taskDocRef);
+                     console.log("Social task deleted:", taskId);
+                 } catch (e) {
+                     console.error("Error deleting social task:", e);
+                 } finally {
+                     hideLoading();
+                 }
+                 await fetchSocialTasks();
+                 renderManageSocialTasksTable();
+                 renderSocialTasksGrid();
+            }
+
+            function showLoading() {
+                if (loadingOverlay) {
+                    loadingOverlay.style.display = 'flex';
+                    setTimeout(() => loadingOverlay.style.opacity = '1', 10);
+                }
+            }
+
+            function hideLoading() {
+                if (loadingOverlay) {
+                    loadingOverlay.style.opacity = '0';
+                    setTimeout(() => loadingOverlay.style.display = 'none', 300);
+                }
+            }
+            
+            async function fetchAdminDashboardData() {
+                showLoading();
+                try {
+                    // Fetch total users, points, and payouts using onSnapshot for real-time updates
+                    const usersCollectionRef = collection(db, `/artifacts/${appId}/users`);
+                    onSnapshot(usersCollectionRef, (usersSnapshot) => {
+                        const totalUsers = usersSnapshot.docs.length;
+                        let totalPointsEarned = 0;
+                        let totalPayouts = 0;
+                        usersSnapshot.forEach(doc => {
+                            const userData = doc.data();
+                            const userPoints = userData.points || 0;
+                            totalPointsEarned += userPoints;
+                            
+                            const payoutHistory = userData.payoutHistory || [];
+                            payoutHistory.forEach(payout => {
+                                totalPayouts += payout.amount || 0;
+                            });
+                        });
+                        
+                        if (adminTotalUsersValue) adminTotalUsersValue.textContent = totalUsers;
+                        if (adminTotalPointsEarnedValue) adminTotalPointsEarnedValue.textContent = totalPointsEarned;
+                        if (adminTotalPayoutsValue) adminTotalPayoutsValue.textContent = `$${totalPayouts.toFixed(2)}`;
+                    }, (error) => {
+                        console.error("Error fetching admin users data:", error);
+                    });
+
+                    // Fetch total videos separately
+                    const videosCollectionRef = collection(db, `/artifacts/${appId}/public/data/videos`);
+                    onSnapshot(videosCollectionRef, (videosSnapshot) => {
+                        const totalVideos = videosSnapshot.docs.length;
+                        if (adminTotalVideosValue) adminTotalVideosValue.textContent = totalVideos;
+                    }, (error) => {
+                        console.error("Error fetching admin videos data:", error);
+                    });
+                } catch (e) {
+                    console.error("Admin dashboard data fetch error:", e);
+                } finally {
+                    hideLoading();
+                }
+            }
+            
+            function updateUI(role) {
+                if (!isAuthReady || !currentUser) return;
+                
+                views.forEach(view => { if(view) view.style.display = 'none'; });
+                if (loginPage) loginPage.style.display = 'none';
+                if (appContainer) appContainer.style.display = 'flex';
+
+                if (role === 'user') {
+                    document.querySelectorAll('.admin-link').forEach(link => { if (link) link.style.display = 'none'; });
+                    document.querySelectorAll('.user-link').forEach(link => { if (link) link.style.display = 'flex'; });
+                    if (headerMeta) headerMeta.innerHTML = getUserHeaderHTML();
+                    if (sidebarProfile) sidebarProfile.innerHTML = getUserProfileHTML();
+                    if (welcomeMessage) welcomeMessage.textContent = `Welcome back, ${currentUser.name}!`;
+                    showView('user-dashboard-view');
+                    updatePointsDisplay();
+                    renderPointsHistoryTable();
+                    fetchVideos().then(() => renderVideoGrid('all'));
+                    fetchSocialTasks().then(renderSocialTasksGrid);
+                } else if (role === 'admin') {
+                    document.querySelectorAll('.user-link').forEach(link => { if (link) link.style.display = 'none'; });
+                    document.querySelectorAll('.admin-link').forEach(link => { if (link) link.style.display = 'flex'; });
+                    if (headerMeta) headerMeta.innerHTML = getAdminHeaderHTML();
+                    if (sidebarProfile) sidebarProfile.innerHTML = getUserProfileHTML();
+                    showView('admin-dashboard-view');
+                    fetchVideos().then(renderManageVideosTable);
+                    fetchSocialTasks().then(renderManageSocialTasksTable);
+                    fetchAdminDashboardData(); // Call new function to fetch admin data dynamically
+                }
+                attachLogoutListeners(); 
+            }
+            
+            function getUserProfileHTML() {
+                const nameText = currentUser?.name || 'Unknown';
+                const profileText = nameText.split(' ').map(n => n[0]).join('');
+                const roleText = currentUser?.role === 'admin' ? 'ADMINISTRATOR' : currentUser?.email || 'N/A';
+                return `
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center mr-4 font-semibold text-primary">
+                             ${profileText}
+                        </div>
+                        <div class="flex-grow">
+                            <div class="text-white font-semibold">${nameText}</div>
+                            <div class="text-sm text-muted-text">${roleText}</div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            function getUserHeaderHTML() {
+                const nameText = currentUser?.name || 'Unknown';
+                const profileText = nameText.split(' ').map(n => n[0]).join('');
+                const roleText = currentUser?.role === 'admin' ? 'Admin' : 'User';
+                return `
+                    <div class="flex items-center space-x-4">
+                        <div class="flex flex-col items-end">
+                            <span id="user-points-display" class="font-bold text-lg">${(userData?.points || 0).toLocaleString()} PTS</span>
+                            <span class="text-sm text-muted-text">$${(userData?.points / 5000).toFixed(2)}</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                             <div class="text-right">
+                                 <span class="block font-semibold">${nameText}</span>
+                                 <span class="block text-xs text-muted-text">${roleText}</span>
+                             </div>
+                            <img src="https://placehold.co/32x32/6366f1/ffffff?text=${profileText}" alt="${nameText}" class="w-8 h-8 rounded-full border border-primary">
+                        </div>
+                        <button class="logout-btn p-2 rounded-full hover:bg-slate-700 transition-colors duration-200">
+                            <svg class="w-5 h-5 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5-5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+                        </button>
+                    </div>
+                `;
+            }
+            
+            function getAdminHeaderHTML() {
+                 const nameText = currentUser?.name || 'Unknown';
+                 const profileText = nameText.split(' ').map(n => n[0]).join('');
+                 return `
+                    <div class="flex items-center space-x-4">
+                        <div class="flex items-center space-x-2">
+                             <div class="text-right">
+                                 <span class="block font-semibold">${nameText}</span>
+                                 <span class="block text-xs text-muted-text">Admin</span>
+                             </div>
+                            <img src="https://placehold.co/32x32/6366f1/ffffff?text=${profileText}" alt="${nameText}" class="w-8 h-8 rounded-full border border-primary">
+                        </div>
+                        <button class="logout-btn p-2 rounded-full hover:bg-slate-700 transition-colors duration-200">
+                            <svg class="w-5 h-5 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5-5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+                        </button>
+                    </div>
+                 `;
+            }
+
+            function attachLogoutListeners() {
+                const logoutButtons = document.querySelectorAll('.logout-btn');
+                if (logoutButtons) {
+                    logoutButtons.forEach(btn => {
+                        const oldBtn = btn.cloneNode(true);
+                        btn.parentNode.replaceChild(oldBtn, btn);
+                    });
+                    const newLogoutButtons = document.querySelectorAll('.logout-btn');
+                    newLogoutButtons.forEach(btn => {
+                        btn.addEventListener('click', async () => {
+                            try {
+                                await signOut(auth);
+                                if (loginPage) loginPage.style.display = 'flex';
+                                if (appContainer) appContainer.style.display = 'none';
+                                currentUser = null;
+                                userData = null;
+                                console.log("User signed out.");
+                            } catch (error) {
+                                console.error("Error signing out:", error);
+                            }
+                        });
+                    });
+                }
+            }
+
+            function showView(targetId) {
+                views.forEach(view => { if(view) view.style.display = 'none'; });
+                const targetView = document.getElementById(targetId);
+                if (targetView) {
+                    targetView.style.display = 'block';
+                    updatePageTitle(targetId);
+                    navLinks.forEach(nav => {
+                        if (nav) nav.classList.remove('active', 'bg-primary/20', 'text-white');
+                    });
+                    const activeLink = document.querySelector(`a[data-target="${targetId}"]`);
+                    if (activeLink) {
+                        activeLink.classList.add('active', 'bg-primary/20', 'text-white');
+                    }
+                }
+            }
+
+            function updatePageTitle(viewId) {
+                const titleElement = document.getElementById('page-title');
+                if (!titleElement) return;
+
+                const menuToggle = `<button id="menu-toggle" class="md:hidden p-2 -ml-2 rounded-md hover:bg-card-bg transition-colors duration-200">
+                                          <svg class="w-6 h-6 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+                                      </button>`;
+                let titleText = 'Ping Rewards';
+
+                switch (viewId) {
+                    case 'user-dashboard-view': titleText = 'Dashboard'; break;
+                    case 'watch-videos-view': titleText = 'Watch Videos'; break;
+                    case 'social-tasks-view': titleText = 'Social Tasks'; break;
+                    case 'points-history-view': titleText = 'Points History'; break;
+                    case 'about-view': titleText = 'About'; break;
+                    case 'admin-dashboard-view': titleText = 'Admin Dashboard'; break;
+                    case 'manage-videos-view': titleText = 'Manage Videos'; break;
+                    case 'manage-social-tasks-view': titleText = 'Manage Social Tasks'; break;
+                    case 'manage-users-view': titleText = 'Manage Users'; break;
+                    case 'video-player-view': titleText = 'Video Player'; break;
+                }
+                titleElement.innerHTML = `${menuToggle} ${titleText}`;
+                
+                const toggleBtn = document.getElementById('menu-toggle');
+                if (toggleBtn) {
+                     toggleBtn.addEventListener('click', () => {
+                         if (sidebar) sidebar.classList.toggle('open');
+                         if (backdrop) backdrop.classList.toggle('open');
+                         document.body.classList.toggle('no-scroll');
+                     });
+                }
+            }
+            
+            function generateRandomChartData() {
+                const bars = document.querySelectorAll('#weekly-watch-chart .w-1\\/7');
+                bars.forEach(bar => {
+                    const randomHeight = Math.floor(Math.random() * 90) + 10;
+                    bar.style.height = `${randomHeight}%`;
+                });
+            }
+
+            // Updated function to sort videos with watched ones at the bottom
+            function renderVideoGrid(category, searchQuery = '') {
+                const videoGrid = document.getElementById('video-grid');
+                if (!videoGrid) {
+                    console.error("Video grid element not found.");
+                    return;
+                }
+                videoGrid.innerHTML = '';
+                
+                // Filter videos based on category and search query
+                let filteredVideos = videos;
+                if (category !== 'all') {
+                    filteredVideos = filteredVideos.filter(video => video.category === category);
+                }
+                if (searchQuery) {
+                    const query = searchQuery.toLowerCase();
+                    filteredVideos = filteredVideos.filter(video => 
+                        video.title.toLowerCase().includes(query) || 
+                        video.description.toLowerCase().includes(query)
+                    );
+                }
+
+                if (filteredVideos.length === 0) {
+                     videoGrid.innerHTML = `<p class="col-span-full text-center text-muted-text py-12">No videos found.</p>`;
+                     return;
+                }
+                
+                // Sort videos: unwatched first, then watched
+                const watchedVideoIds = userData?.watchedVideos || [];
+                const unwatchedVideos = filteredVideos.filter(video => !watchedVideoIds.includes(video.id));
+                const watchedVideos = filteredVideos.filter(video => watchedVideoIds.includes(video.id));
+                const sortedVideos = [...unwatchedVideos, ...watchedVideos];
+
+                sortedVideos.forEach(video => {
+                    let thumbnailUrl;
+                    const youtubeId = getYouTubeId(video.videoUrl);
+                    if (youtubeId) {
+                        thumbnailUrl = getYouTubeThumbnail(youtubeId);
+                    } else {
+                        thumbnailUrl = 'https://placehold.co/400x225/1f3148/ffffff?text=Video';
+                    }
+
+                    // Add a class for watched videos to style them differently
+                    const isWatched = watchedVideoIds.includes(video.id);
+                    const watchedClass = isWatched ? 'opacity-50 grayscale' : '';
+
+                    const videoCardHtml = `
+                        <div class="video-card bg-card-bg rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 cursor-pointer border border-slate-700 ${watchedClass}" data-category="${video.category}" data-video-url="${video.videoUrl}" data-video-id="${video.id}">
+                            <img src="${thumbnailUrl}" alt="${video.title}" class="w-full h-40 object-cover" onerror="this.onerror=null; this.src='https://placehold.co/400x225/1f3148/ffffff?text=Video';">
+                            <div class="p-4">
+                                <div class="text-xs text-secondary mb-1 uppercase">${video.category}</div>
+                                <h3 class="text-lg font-semibold truncate mb-1">${video.title}</h3>
+                                <p class="text-sm text-muted-text line-clamp-2">${video.description}</p>
+                                <span class="inline-block bg-primary text-white text-xs font-bold px-3 py-1 rounded-full mt-2">${video.points} PTS</span>
+                                ${isWatched ? '<span class="text-xs text-accent-green font-semibold ml-2">Watched</span>' : ''}
+                            </div>
+                        </div>
+                    `;
+                    videoGrid.innerHTML += videoCardHtml;
+                });
+                attachVideoCardListeners();
+            }
+
+            // Function to render social tasks for the user
+            function renderSocialTasksGrid() {
+                 if (!socialTasksGrid) {
+                     console.error("Social tasks grid element not found.");
+                     return;
+                 }
+                 socialTasksGrid.innerHTML = '';
+
+                 if (socialTasks.length === 0) {
+                     socialTasksGrid.innerHTML = `<p class="col-span-full text-center text-muted-text p-6">No social tasks available right now. Check back later!</p>`;
+                     return;
+                 }
+                 
+                 const completedTasks = userData?.completedSocialTasks || [];
+                 socialTasks.forEach(task => {
+                     const isCompleted = completedTasks.includes(task.id);
+                     const cardClass = isCompleted ? 'opacity-50 grayscale cursor-not-allowed' : '';
+                     const buttonText = isCompleted ? 'Completed' : 'Complete Task';
+                     const buttonClass = isCompleted ? 'bg-accent-green/50' : 'bg-primary hover:bg-indigo-600';
+                     let icon;
+                     switch(task.platform) {
+                         case 'Facebook': icon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" class="fill-blue-600"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c5.29 0 9.77-4.14 10-9.43.14-2.85-2.06-5.26-4.91-5.74v2.02c1.78.4 3.12 1.93 3.12 3.82 0 2.11-1.79 3.82-3.99 3.82H12v-6.93l-3 3v2.93h-1v-6h-2v6.93l1.85-1.85c.19-.19.45-.3.72-.3s.53.11.72.3L12 14.07V12h3.99c1.66 0 3-1.34 3-3s-1.34-3-3-3h-3c-1.1 0-2 .9-2 2v1H9v2h2v1H8c-2.21 0-4-1.79-4-4s1.79-4 4-4h4V2z"/></svg>`; break;
+                         case 'TikTok': icon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" class="fill-black dark:fill-white"><path d="M12.758 2.043l-.158.012c-1.42 0-2.585 1.164-2.585 2.585v15.728l-.16.012h-.008c-.768.04-1.455.334-2.02.825-1.127.994-1.82 2.766-1.82 4.697 0 3.242 2.632 5.875 5.875 5.875 3.243 0 5.875-2.633 5.875-5.875 0-1.93-.693-3.703-1.82-4.696-.564-.49-1.25-.785-2.018-.825h-.008L12.758 2.043zM12 24c-6.627 0-12-5.373-12-12s5.373-12 12-12c6.627 0 12 5.373 12 12s-5.373 12-12 12zm-3-19c0 .552-.448 1-1 1s-1-.448-1-1v-2c0-.552.448-1 1-1s1 .448 1 1v2zm0 17c-2.761 0-5-2.239-5-5s2.239-5 5-5 5 2.239 5 5-2.239 5-5 5zm9-11c0-.552-.448-1-1-1s-1 .448-1 1v2c0 .552.448 1 1 1s1-.448 1-1v-2zm-9 9c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3z"/></svg>`;
+                         case 'Telegram': icon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" class="fill-blue-500"><path d="M18.3 5.4c-.6-.3-1.2-.5-1.9-.5c-.8 0-1.5.2-2.1.6c-.6.4-1 .9-1.3 1.5c-.3.6-.4 1.3-.4 2s.1 1.4.4 2.1c.3.6.7 1.1 1.3 1.5c.6.4 1.2.6 2.1.6c.7 0 1.4-.2 1.9-.5c.6-.3 1.1-.8 1.4-1.4c.3-.6.4-1.2.4-1.9s-.1-1.3-.4-1.9c-.3-.6-.8-1.1-1.4-1.4zM22 6.5l-3.3 12c-.2.9-.8 1.4-1.8 1.4c-.6 0-1.2-.2-1.6-.4l-5.6-3.8c-.5-.3-.9-.6-1.1-.9c-.2-.3-.3-.7-.3-1.1c0-.4.1-.8.3-1.1s.5-.6 1.1-.9l8.6-4.9c.2-.1.4-.2.6-.2c.2 0 .4.1.6.2s.2.4.2.6zM2 12c0 2.2 1.3 4.2 3.3 5.3L4 20l3.8-1.1c.9.2 1.8.3 2.7.3c1.7 0 3.3-.6 4.6-1.7l.7-.6c-.2-.4-.3-.8-.3-1.2c0-1.3.6-2.5 1.7-3.3c1.1-.8 2.5-1.2 4-1.2c-.4-3.1-2.2-5.4-4.8-6.5c-2.4-1-5.1-1.2-7.8-.6c-3 .7-5.3 3.3-5.3 6.6z"/></svg>`; break;
+                         case 'Twitter': icon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" class="fill-blue-400"><path d="M22.46 6c-.77.34-1.6.57-2.46.69.88-.53 1.55-1.37 1.87-2.36-.83.49-1.74.85-2.72 1.05-2.02-2.15-5.35-2.07-7.29.17-1.18 1.32-1.65 3.12-1.36 4.95C5.83 10.66 2.92 8.75 1.12 5.92c-.37.64-.58 1.39-.58 2.19 0 1.52.77 2.87 1.94 3.66-2.01-.06-3.89-.6-5.54-1.52v.04c0 1.92 1.37 3.51 3.19 3.87-.33.09-.67.14-1.02.14-.25 0-.5-.02-.74-.07.5 1.63 2.07 2.81 3.89 2.84-1.4 1.1-3.17 1.75-5.09 1.75-.33 0-.66-.02-.98-.06 1.8 1.15 3.93 1.81 6.22 1.81 7.52 0 11.63-6.22 11.63-11.62 0-.17-.0-.35-.01-.52.8-.57 1.49-1.28 2.04-2.07z"/></svg>`;
+                         case 'YouTube': icon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" class="fill-red-600"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm3 10l-6 4V8l6 4z"/></svg>`;
+                         case 'Web': icon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" class="fill-gray-400"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15h2v-2h-2v2zm0-4h2V7h-2v6z"/></svg>`;
+                         default: icon = '';
+                     }
+
+                     const taskCardHtml = `
+                         <div class="social-task-card bg-card-bg rounded-xl shadow-lg border border-slate-700 p-6 flex flex-col items-center text-center transition-shadow duration-300 ${cardClass}">
+                             <div class="w-16 h-16 rounded-full flex items-center justify-center mb-4">${icon}</div>
+                             <h3 class="text-lg font-semibold mb-1">${task.title}</h3>
+                             <p class="text-sm text-muted-text mb-2">${task.platform}</p>
+                             <span class="inline-block bg-accent-green text-white text-xs font-bold px-3 py-1 rounded-full mb-4">${task.points} PTS</span>
+                             <button class="complete-task-btn w-full py-2 text-white font-semibold rounded-lg transition-colors duration-300 ${buttonClass}" data-task-id="${task.id}" data-task-link="${task.link}" ${isCompleted ? 'disabled' : ''}>
+                                 ${buttonText}
+                             </button>
+                         </div>
+                     `;
+                     socialTasksGrid.innerHTML += taskCardHtml;
+                 });
+                 attachSocialTaskListeners();
+            }
+
+            function renderUsersTable(users) {
+                if (!usersTableBody) return;
+                usersTableBody.innerHTML = '';
+                if (users.length === 0) {
+                     usersTableBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-muted-text">No users found.</td></tr>`;
+                     return;
+                }
+                
+                users.forEach(user => {
+                    const toggleRoleBtnText = user.role === 'admin' ? 'Demote to User' : 'Promote to Admin';
+                    const tableRowHtml = `
+                        <tr data-user-id="${user.id}" class="hover:bg-slate-700 transition-colors duration-200">
+                            <td class="p-4 text-xs font-mono">${user.id.substring(0, 8)}...</td>
+                            <td class="p-4">${user.name || 'N/A'}</td>
+                            <td class="p-4">${user.email || 'N/A'}</td>
+                            <td class="p-4"><span class="capitalize px-2 py-1 rounded-full text-xs font-semibold ${user.role === 'admin' ? 'bg-orange-500 text-white' : 'bg-primary/20 text-primary'}">${user.role}</span></td>
+                            <td class="p-4">${user.points || 0}</td>
+                            <td class="p-4 whitespace-nowrap">
+                                <button class="actions-btn view-history-btn px-3 py-1 bg-accent-green hover:bg-emerald-600 text-white text-sm rounded-lg transition-colors duration-200" data-user-id="${user.id}">View History</button>
+                                ${user.id !== userId ? `<button class="actions-btn toggle-role-btn px-3 py-1 bg-accent-purple hover:bg-purple-600 text-white text-sm rounded-lg ml-2 transition-colors duration-200" data-user-id="${user.id}" data-current-role="${user.role}">${toggleRoleBtnText}</button>` : ''}
+                            </td>
+                        </tr>
+                    `;
+                    usersTableBody.innerHTML += tableRowHtml;
+                });
+                attachManageUsersListeners(users);
+            }
+
+            function renderManageVideosTable() {
+                const videoTableBody = document.querySelector('#videos-table');
+                if (!videoTableBody) {
+                    console.error("Video table body element not found.");
+                    return;
+                }
+                videoTableBody.innerHTML = '';
+                videos.forEach(video => {
+                    const tableRowHtml = `
+                        <tr class="hover:bg-slate-700 transition-colors duration-200" data-video-id="${video.id}">
+                            <td class="p-4">${video.title}</td>
+                            <td class="p-4">${video.category}</td>
+                            <td class="p-4">${video.points}</td>
+                            <td class="p-4">
+                                <a href="#" class="actions-btn edit-btn text-primary hover:text-indigo-400 mr-4 transition-colors duration-200" data-video-id="${video.id}">Edit</a>
+                                <a href="#" class="actions-btn delete-btn text-red-500 hover:text-red-400 transition-colors duration-200" data-video-id="${video.id}">Delete</a>
+                            </td>
+                        </tr>
+                    `;
+                    videoTableBody.innerHTML += tableRowHtml;
+                });
+                attachManageVideosListeners();
+            }
+            
+            // Renders the manage social tasks table for admin view
+            function renderManageSocialTasksTable() {
+                if (!socialTaskTableBody) return;
+                socialTaskTableBody.innerHTML = '';
+                socialTasks.forEach(task => {
+                    const tableRowHtml = `
+                        <tr class="hover:bg-slate-700 transition-colors duration-200" data-task-id="${task.id}">
+                            <td class="p-4">${task.title}</td>
+                            <td class="p-4">${task.platform}</td>
+                            <td class="p-4">${task.link}</td>
+                            <td class="p-4">${task.points}</td>
+                            <td class="p-4">
+                                <a href="#" class="actions-btn edit-social-task-btn text-primary hover:text-indigo-400 mr-4 transition-colors duration-200" data-task-id="${task.id}">Edit</a>
+                                <a href="#" class="actions-btn delete-social-task-btn text-red-500 hover:text-red-400 transition-colors duration-200" data-task-id="${task.id}">Delete</a>
+                            </td>
+                        </tr>
+                    `;
+                    socialTaskTableBody.innerHTML += tableRowHtml;
+                });
+                attachManageSocialTasksListeners();
+            }
+            
+            function renderPointsHistoryTable() {
+                const pointsHistoryTableBody = document.querySelector('#points-history-table');
+                if (!pointsHistoryTableBody) {
+                    console.error("Points history table body element not found.");
+                    return;
+                }
+                pointsHistoryTableBody.innerHTML = '';
+                if (!userData || !userData.pointsHistory || userData.pointsHistory.length === 0) {
+                     pointsHistoryTableBody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-muted-text">No points history yet. Watch some videos!</td></tr>`;
+                     return;
+                }
+                const history = userData.pointsHistory;
+                history.forEach(item => {
+                    const tableRowHtml = `
+                        <tr class="hover:bg-slate-700 transition-colors duration-200">
+                            <td class="p-4">${item.date}</td>
+                            <td class="p-4 flex items-center">
+                                <svg class="w-5 h-5 mr-2 fill-accent-green flex-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5l-5-5 1.41-1.41L10 13.67l7.59-7.59L19 7l-9 9.5z"/></svg>
+                                ${item.description}
+                            </td>
+                            <td class="p-4 font-bold text-accent-green">+${item.points}</td>
+                        </tr>
+                    `;
+                    pointsHistoryTableBody.innerHTML += tableRowHtml;
+                });
+            }
+            
+            function renderPayoutHistoryTable(payouts) {
+                if (!historyTableBody) return;
+                historyTableBody.innerHTML = '';
+                if (!payouts || payouts.length === 0) {
+                    historyTableBody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-muted-text">No payout history yet.</td></tr>`;
+                    return;
+                }
+                
+                payouts.forEach(item => {
+                    const rowHtml = `
+                        <tr class="hover:bg-slate-700 transition-colors duration-200">
+                            <td class="p-4">${item.date}</td>
+                            <td class="p-4">Cash Out</td>
+                            <td class="p-4 font-bold text-accent-orange">-$${item.amount.toFixed(2)}</td>
+                        </tr>
+                    `;
+                    historyTableBody.innerHTML += rowHtml;
+                });
+            }
+
+            function updatePointsDisplay() {
+                if (!userData) return;
+                const totalPointsValue = document.getElementById('total-points-value');
+                const estimatedEarningsValue = document.getElementById('estimated-earnings-value');
+                const videosWatchedValue = document.getElementById('videos-watched-value');
+                const userPointsDisplay = document.getElementById('user-points-display');
+                const cashoutBtn = document.getElementById('cashout-button');
+                const payoutAmountInput = document.getElementById('payout-amount');
+
+                if (totalPointsValue) totalPointsValue.textContent = userData.points.toLocaleString();
+                if (estimatedEarningsValue) estimatedEarningsValue.textContent = `$${(userData.points / 5000).toFixed(2)}`;
+                if (videosWatchedValue) videosWatchedValue.textContent = (userData.watchedVideos || []).length;
+                if (userPointsDisplay) userPointsDisplay.textContent = `${userData.points.toLocaleString()} PTS`;
+                if (payoutAmountInput) payoutAmountInput.value = (userData.points / 5000).toFixed(2);
+                
+                if (cashoutBtn) {
+                     cashoutBtn.disabled = userData.points < 5000;
+                     if (userData.points < 5000) {
+                         cashoutBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                         cashoutBtn.classList.remove('hover:bg-indigo-600');
+                     } else {
+                         cashoutBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                         cashoutBtn.classList.add('hover:bg-indigo-600');
+                     }
+                }
+            }
+
+            function animateCoins(startElement, endElement, points) {
+                const numberOfCoins = Math.min(Math.floor(points / 20), 10);
+                const startRect = startElement.getBoundingClientRect();
+                const endRect = endElement.getBoundingClientRect();
+                
+                for (let i = 0; i < numberOfCoins; i++) {
+                    const coin = document.createElement('div');
+                    coin.className = 'absolute z-50 transition-all duration-1000 ease-out opacity-0 coin-icon';
+                    coin.innerHTML = `<svg class="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 102 0V6zm-1 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg>`;
+                    document.body.appendChild(coin);
+
+                    coin.style.left = `${startRect.left + (startRect.width / 2) - 8}px`;
+                    coin.style.top = `${startRect.top + (startRect.height / 2) - 8}px`;
+
+                    setTimeout(() => {
+                        coin.style.left = `${endRect.left + (endRect.width / 2) - 8}px`;
+                        coin.style.top = `${endRect.top + (endRect.height / 2) - 8}px`;
+                        coin.style.opacity = '1';
+                        coin.style.transform = 'translateY(-100px) scale(0.5)';
+                    }, 50 + i * 50);
+
+                    setTimeout(() => {
+                        coin.remove();
+                    }, 1100 + i * 50);
+                }
+            }
+
+            async function attachVideoCardListeners() {
+                const cards = document.querySelectorAll('.video-card');
+                cards.forEach(card => {
+                    card.addEventListener('click', (e) => {
+                        const videoId = card.getAttribute('data-video-id');
+                        const video = videos.find(v => v.id === videoId);
+                        
+                        if (video) {
+                            videoCardToAnimate = card; // Store the card element for animation later
+                            if (videoIframe) videoIframe.src = video.videoUrl;
+                            if (videoPlayerTitle) videoPlayerTitle.textContent = video.title;
+                            if (videoPlayerDescription) videoPlayerDescription.textContent = video.description;
+                            showView('video-player-view');
+                            if (summaryOutput) summaryOutput.innerHTML = ''; // Clear previous summary
+
+                            let pointsEarnedInSession = false;
+                            clearTimeout(window.videoWatchTimer);
+                            window.videoWatchTimer = setTimeout(() => {
+                                pointsEarnedInSession = true;
+                                console.log(`Video watched for required duration. Click 'Back to Videos' to earn points.`);
+                                window.currentWatchedVideoId = video.id; // Store ID for summary button
+                            }, video.watchDuration * 1000);
+                            
+                            if(videoPlayerBackBtn) {
+                                videoPlayerBackBtn.onclick = async () => {
+                                    clearTimeout(window.videoWatchTimer);
+                                    if (videoIframe) videoIframe.src = '';
+                                    if (pointsEarnedInSession) {
+                                        if (videoCardToAnimate) {
+                                            const endElement = document.getElementById('user-points-display');
+                                            animateCoins(videoCardToAnimate, endElement, video.points);
+                                            // Pass video ID to the function
+                                            setTimeout(async () => {
+                                                await updatePointsInFirestore(video.points, `Watched "${video.title}"`, video.id, 'video');
+                                            }, 1000);
+                                        } else {
+                                            await updatePointsInFirestore(video.points, `Watched "${video.title}"`, video.id, 'video');
+                                        }
+                                        console.log("Points updated via Firebase.");
+                                    } else {
+                                        console.log(`You did not watch the video for the required duration. No points were awarded.`);
+                                    }
+                                    showView('watch-videos-view');
+                                };
+                            }
+                        }
+                    });
+                });
+            }
+            
+            // Attach listeners to social task buttons
+            function attachSocialTaskListeners() {
+                const completeButtons = document.querySelectorAll('.complete-task-btn');
+                completeButtons.forEach(btn => {
+                    btn.addEventListener('click', async () => {
+                        const taskId = btn.getAttribute('data-task-id');
+                        const task = socialTasks.find(t => t.id === taskId);
+                        
+                        if (task && !btn.disabled) {
+                            // Open the link in a new tab
+                            window.open(task.link, '_blank');
+                            
+                            // Immediately award points and update UI
+                            btn.textContent = 'Completed';
+                            btn.disabled = true;
+                            btn.classList.add('bg-accent-green/50', 'cursor-not-allowed');
+                            btn.classList.remove('bg-primary', 'hover:bg-indigo-600');
+                            
+                            const endElement = document.getElementById('user-points-display');
+                            const startElement = btn;
+                            animateCoins(startElement, endElement, task.points);
+
+                            await updatePointsInFirestore(task.points, `Completed social task: "${task.title}"`, taskId, 'social');
+                        }
+                    });
+                });
+            }
+
+            function showDeleteModal(id, type) {
+                if (deleteConfirmModal) {
+                    deleteConfirmModal.classList.remove('hidden');
+                    const oldConfirmBtn = deleteConfirmBtn.cloneNode(true);
+                    deleteConfirmBtn.parentNode.replaceChild(oldBtn, deleteConfirmBtn);
+                    const newConfirmBtn = document.getElementById('confirm-delete-btn');
+                    newConfirmBtn.addEventListener('click', async () => {
+                        deleteConfirmModal.classList.add('hidden');
+                        if (type === 'video') {
+                           await deleteVideo(id);
+                        } else if (type === 'social') {
+                           await deleteSocialTask(id);
+                        }
+                    });
+                }
+            }
+            
+            document.querySelectorAll('#delete-confirm-modal .cancel-btn, #delete-confirm-modal .save-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                     deleteConfirmModal.classList.add('hidden');
+                });
+            });
+            
+            // Close the main history modal
+            if (historyModalCloseBtn) {
+                historyModalCloseBtn.addEventListener('click', () => {
+                    historyModal.classList.add('hidden');
+                });
+            }
+
+            function attachManageVideosListeners() {
+                const editBtns = document.querySelectorAll('.edit-btn');
+                editBtns.forEach(btn => {
+                    const oldBtn = btn.cloneNode(true);
+                    btn.parentNode.replaceChild(oldBtn, btn);
+                });
+                const newEditBtns = document.querySelectorAll('.edit-btn');
+                newEditBtns.forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        e.preventDefault();
+                        const videoId = btn.getAttribute('data-video-id');
+                        const videoToEdit = videos.find(v => v.id === videoId);
+                        if (videoToEdit) {
+                            if (addModalTitle) addModalTitle.textContent = "Edit Video";
+                            if (document.getElementById('video-title')) document.getElementById('video-title').value = videoToEdit.title;
+                            if (document.getElementById('video-description')) document.getElementById('video-description').value = videoToEdit.description;
+                            if (document.getElementById('video-category')) document.getElementById('video-category').value = videoToEdit.category;
+                            if (document.getElementById('video-url')) document.getElementById('video-url').value = videoToEdit.videoUrl;
+                            if (document.getElementById('video-points')) document.getElementById('video-points').value = videoToEdit.points;
+                            if (document.getElementById('watch-duration')) document.getElementById('watch-duration').value = videoToEdit.watchDuration;
+                            if (addVideoModal) addVideoModal.classList.remove('hidden');
+                            if (addVideoForm) addVideoForm.setAttribute('data-editing-id', videoId);
+                        }
+                    });
+                });
+
+                const deleteBtns = document.querySelectorAll('.delete-btn');
+                deleteBtns.forEach(btn => {
+                    const oldBtn = btn.cloneNode(true);
+                    btn.parentNode.replaceChild(oldBtn, btn);
+                });
+                const newDeleteBtns = document.querySelectorAll('.delete-btn');
+                newDeleteBtns.forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        e.preventDefault();
+                        const videoId = btn.getAttribute('data-video-id');
+                        showDeleteModal(videoId, 'video');
+                    });
+                });
+            }
+            
+            // Attach listeners to the manage social tasks buttons
+            function attachManageSocialTasksListeners() {
+                 const editBtns = document.querySelectorAll('.edit-social-task-btn');
+                 editBtns.forEach(btn => {
+                     btn.addEventListener('click', (e) => {
+                         e.preventDefault();
+                         const taskId = btn.getAttribute('data-task-id');
+                         const taskToEdit = socialTasks.find(t => t.id === taskId);
+                         if (taskToEdit) {
+                             socialTaskModalTitle.textContent = "Edit Social Task";
+                             document.getElementById('social-task-title').value = taskToEdit.title;
+                             document.getElementById('social-task-platform').value = taskToEdit.platform;
+                             document.getElementById('social-task-link').value = taskToEdit.link;
+                             document.getElementById('social-task-points').value = taskToEdit.points;
+                             addSocialTaskModal.classList.remove('hidden');
+                             addSocialTaskForm.setAttribute('data-editing-id', taskId);
+                         }
+                     });
+                 });
+                 
+                 const deleteBtns = document.querySelectorAll('.delete-social-task-btn');
+                 deleteBtns.forEach(btn => {
+                     btn.addEventListener('click', (e) => {
+                         e.preventDefault();
+                         const taskId = btn.getAttribute('data-task-id');
+                         showDeleteModal(taskId, 'social');
+                     });
+                 });
+            }
+            
+            function attachManageUsersListeners(users) {
+                const viewHistoryBtns = document.querySelectorAll('.view-history-btn');
+                viewHistoryBtns.forEach(btn => {
+                    btn.addEventListener('click', async () => {
+                        const targetUserId = btn.getAttribute('data-user-id');
+                        const user = users.find(u => u.id === targetUserId);
+                        if (user && historyModal && historyModalTitle && historyTableBody) {
+                             historyModalTitle.textContent = `${user.name || 'User'}'s Points History`;
+                             historyTableHeader.innerHTML = `<th class="p-4 rounded-tl-lg">Date</th><th class="p-4">Description</th><th class="p-4 rounded-tr-lg">Points</th>`;
+                             
+                             if (user.pointsHistory && user.pointsHistory.length > 0) {
+                                 historyTableBody.innerHTML = ''; // Clear previous content
+                                 user.pointsHistory.forEach(item => {
+                                     const row = document.createElement('tr');
+                                     row.className = 'hover:bg-slate-700 transition-colors duration-200';
+                                     row.innerHTML = `<td class="p-4">${item.date}</td><td class="p-4">${item.description}</td><td class="p-4">${item.points}</td>`;
+                                     historyTableBody.appendChild(row);
+                                 });
+                             } else {
+                                 historyTableBody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-muted-text">No history found.</td></tr>`;
+                             }
+                             historyModal.classList.remove('hidden');
+                        }
+                    });
+                });
+                
+                document.querySelectorAll('#history-modal .cancel-btn').forEach(btn => {
+                     btn.addEventListener('click', () => {
+                         historyModal.classList.add('hidden');
+                     });
+                });
+                
+                const toggleRoleBtns = document.querySelectorAll('.toggle-role-btn');
+                toggleRoleBtns.forEach(btn => {
+                     btn.addEventListener('click', async () => {
+                         const targetUserId = btn.getAttribute('data-user-id');
+                         const currentRole = btn.getAttribute('data-current-role');
+                         await toggleUserRole(targetUserId, currentRole);
+                     });
+                });
+            }
+            
+            if (adminPayoutsCard) {
+                adminPayoutsCard.addEventListener('click', async () => {
+                    if (!historyModal || !historyModalTitle || !historyTableBody) return;
+                    
+                    historyModalTitle.textContent = `All Payouts History`;
+                    historyTableHeader.innerHTML = `<th class="p-4 rounded-tl-lg">Date</th><th class="p-4">Amount ($)</th><th class="p-4 rounded-tr-lg">User ID</th>`;
+                    historyTableBody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-muted-text">Fetching data...</td></tr>`;
+                    
+                    showLoading();
+                    
+                    try {
+                        const usersCollectionRef = collection(db, `/artifacts/${appId}/users`);
+                        const querySnapshot = await getDocs(usersCollectionRef);
+                        let allPayouts = [];
+                        
+                        querySnapshot.forEach(doc => {
+                            const userData = doc.data();
+                            const payouts = userData.payoutHistory || [];
+                            const userId = doc.id;
+                            payouts.forEach(payout => {
+                                allPayouts.push({ ...payout, userId: userId });
+                            });
+                        });
+                        
+                        if (allPayouts.length > 0) {
+                            historyTableBody.innerHTML = '';
+                            allPayouts.forEach(payout => {
+                                const rowHtml = `
+                                    <tr class="hover:bg-slate-700 transition-colors duration-200">
+                                        <td class="p-4">${payout.date}</td>
+                                        <td class="p-4 font-bold text-accent-orange">-$${payout.amount.toFixed(2)}</td>
+                                        <td class="p-4 text-xs font-mono">${payout.userId.substring(0, 8)}...</td>
+                                    </tr>
+                                `;
+                                historyTableBody.innerHTML += rowHtml;
+                            });
+                        } else {
+                           historyTableBody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-muted-text">No payout history found.</td></tr>`;
+                        }
+                    } catch (e) {
+                         console.error("Error fetching payout history:", e);
+                         historyTableBody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-red-500">Error fetching payout history.</td></tr>`;
+                    } finally {
+                        hideLoading();
+                        historyModal.classList.remove('hidden');
+                    }
+                });
+            }
+
+            if (googleSignInBtn) {
+                googleSignInBtn.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    showLoading();
+                    const provider = new GoogleAuthProvider();
+                    try {
+                        const result = await signInWithPopup(auth, provider);
+                        if (result.user) {
+                           console.log("User signed in with Google successfully.");
+                        }
+                    } catch (error) {
+                        console.error("Google Sign-in failed:", error);
+                        if (loginMessage) {
+                            loginMessage.textContent = 'Google Sign-in failed. Please check your internet connection.';
+                            loginMessage.style.display = 'block';
+                        }
+                        hideLoading();
+                    }
+                });
+            }
+            
+            if (getSummaryBtn) {
+                getSummaryBtn.addEventListener('click', async () => {
+                    const currentVideo = videos.find(v => v.id === window.currentWatchedVideoId);
+                    if (!currentVideo) {
+                        if (summaryOutput) summaryOutput.innerHTML = `<p class="text-red-500">Video not found.</p>`;
+                        return;
+                    }
+
+                    if (summaryOutput) summaryOutput.innerHTML = `<p class="text-primary">Fetching summary...</p>`;
+
+                    try {
+                        const prompt = `Video Title: "${currentVideo.title}". Description: "${currentVideo.description}". Provide a concise summary in English.`;
+                        const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+                        const payload = { contents: chatHistory };
+                        const apiKey = "";
+                        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+                        
+                        const response = await fetch(apiUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        
+                        const result = await response.json();
+                        if (result.candidates && result.candidates.length > 0 &&
+                            result.candidates[0].content && result.candidates[0].content.parts &&
+                            result.candidates[0].content.parts.length > 0) {
+                            const summaryText = result.candidates[0].content.parts[0].text;
+                            if (summaryOutput) summaryOutput.innerHTML = `<h4 class="font-semibold mt-4">Summary</h4><p class="text-sm">${summaryText}</p>`;
+                        } else {
+                            if (summaryOutput) summaryOutput.innerHTML = `<p class="text-red-500">Could not retrieve summary.</p>`;
+                        }
+                    } catch (error) {
+                        console.error("Gemini API Error:", error);
+                        if (summaryOutput) summaryOutput.innerHTML = `<p class="text-red-500">Error fetching summary.</p>`;
+                    }
+                });
+            }
+
+            if (menuToggleBtn) {
+                menuToggleBtn.addEventListener('click', () => {
+                    if (sidebar) sidebar.classList.toggle('open');
+                    if (backdrop) backdrop.classList.toggle('open');
+                    document.body.classList.toggle('no-scroll');
+                });
+            }
+            
+            navLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const targetId = link.getAttribute('data-target');
+                    showView(targetId);
+                    if (sidebar) sidebar.classList.remove('open');
+                    if (backdrop) backdrop.classList.remove('open');
+                    document.body.classList.remove('no-scroll');
+                    if (targetId === 'watch-videos-view') {
+                        renderVideoGrid('all');
+                    } else if (targetId === 'social-tasks-view') {
+                        renderSocialTasksGrid();
+                    } else if (targetId === 'manage-videos-view') {
+                        renderManageVideosTable();
+                    } else if (targetId === 'manage-social-tasks-view') {
+                         renderManageSocialTasksTable();
+                    } else if (targetId === 'manage-users-view') {
+                        fetchAllUsers();
+                    } else if (targetId === 'points-history-view') {
+                        renderPointsHistoryTable();
+                    }
+                });
+            });
+            
+            if (backdrop) {
+                backdrop.addEventListener('click', () => {
+                    if (sidebar) sidebar.classList.remove('open');
+                    if (backdrop) backdrop.classList.toggle('open');
+                    document.body.classList.toggle('no-scroll');
+                });
+            }
+
+            filterButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    filterButtons.forEach(b => { 
+                        if(b) b.classList.remove('active', 'bg-primary', 'border-primary', 'text-white'); 
+                        if(b) b.classList.add('bg-card-bg', 'border-slate-700');
+                    });
+                    btn.classList.add('active', 'bg-primary', 'border-primary', 'text-white');
+                    btn.classList.remove('bg-card-bg', 'border-slate-700');
+                    const category = btn.getAttribute('data-category');
+                    renderVideoGrid(category);
+                });
+            });
+
+            if(searchBar) {
+                searchBar.addEventListener('input', () => {
+                     const activeFilterBtn = document.querySelector('.filter-btn.active');
+                     const category = activeFilterBtn ? activeFilterBtn.getAttribute('data-category') : 'all';
+                     renderVideoGrid(category, searchBar.value);
+                });
+            }
+
+            if (addVideoBtn) {
+                addVideoBtn.addEventListener('click', () => {
+                    if (addModalTitle) addModalTitle.textContent = "Add New Video";
+                    if (addVideoForm) addVideoForm.reset();
+                    if (addVideoForm) addVideoForm.removeAttribute('data-editing-id');
+                    if (addVideoModal) addVideoModal.classList.remove('hidden');
+                });
+            }
+
+            document.querySelectorAll('#add-video-modal .cancel-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (addVideoModal) addVideoModal.classList.add('hidden');
+                });
+            });
+
+            if (addVideoForm) {
+                addVideoForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    
+                    const formData = new FormData(addVideoForm);
+                    const videoData = {
+                        title: formData.get('videoTitle'),
+                        description: formData.get('videoDescription'),
+                        category: formData.get('videoCategory'),
+                        videoUrl: formData.get('videoUrl'),
+                        points: parseInt(formData.get('videoPoints')),
+                        watchDuration: parseInt(formData.get('watchDuration'))
+                    };
+                    
+                    const editingId = addVideoForm.getAttribute('data-editing-id');
+                    await saveVideo(videoData, editingId);
+                    
+                    if (addVideoModal) addVideoModal.classList.add('hidden');
+                });
+            }
+            
+            // New social task form handlers
+            if (addSocialTaskBtn) {
+                 addSocialTaskBtn.addEventListener('click', () => {
+                     socialTaskModalTitle.textContent = "Add New Social Task";
+                     addSocialTaskForm.reset();
+                     addSocialTaskForm.removeAttribute('data-editing-id');
+                     addSocialTaskModal.classList.remove('hidden');
+                 });
+            }
+
+            document.querySelectorAll('#add-social-task-modal .cancel-btn').forEach(btn => {
+                 btn.addEventListener('click', () => {
+                     addSocialTaskModal.classList.add('hidden');
+                 });
+            });
+
+            if (addSocialTaskForm) {
+                 addSocialTaskForm.addEventListener('submit', async (e) => {
+                     e.preventDefault();
+
+                     const formData = new FormData(addSocialTaskForm);
+                     const taskData = {
+                         title: formData.get('taskTitle'),
+                         platform: formData.get('taskPlatform'),
+                         link: formData.get('taskLink'),
+                         points: parseInt(formData.get('taskPoints')),
+                     };
+
+                     const editingId = addSocialTaskForm.getAttribute('data-editing-id');
+                     await saveSocialTask(taskData, editingId);
+
+                     addSocialTaskModal.classList.add('hidden');
+                 });
+            }
+
+            if (cashoutBtn) {
+                cashoutBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    // Check if the user has enough points
+                    if (!userData || userData.points < 5000) {
+                        if (cashoutMessageModal) {
+                            cashoutMessageText.textContent = `You need 5000 points to cash out. Your current points are ${(userData?.points || 0).toLocaleString()}.`;
+                            cashoutMessageModal.classList.remove('hidden');
+                        }
+                    } else {
+                        if (cashoutModal) cashoutModal.classList.remove('hidden');
+                        if (userData) {
+                            const payoutAmount = (userData.points / 5000).toFixed(2);
+                            const payoutInput = document.getElementById('payout-amount');
+                            if (payoutInput) payoutInput.value = payoutAmount;
+                        }
+                    }
+                });
+            }
+            
+            // Close cash out message modal
+            if (cashoutMessageCloseBtn) {
+                 cashoutMessageCloseBtn.addEventListener('click', () => {
+                     cashoutMessageModal.classList.add('hidden');
+                 });
+            }
+
+            document.querySelectorAll('#cashout-modal .cancel-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (cashoutModal) cashoutModal.classList.add('hidden');
+                });
+            });
+            
+            if (cashoutForm) {
+                cashoutForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    
+                    const channelUrl = "https://t.me/MMMMOline";
+                    
+                    if (!userData || userData.points <= 0) {
+                        if (cashoutModal) cashoutModal.classList.add('hidden');
+                        window.open(channelUrl, '_blank');
+                        return;
+                    }
+                    showLoading();
+                    try {
+                        const userDocRef = doc(db, `/artifacts/${appId}/users/${userId}`);
+                        const pointsCashedOut = userData.points;
+                        const payoutAmount = (pointsCashedOut / 5000).toFixed(2);
+                        const newHistoryEntry = {
+                            date: new Date().toLocaleDateString('en-US'),
+                            description: `Cashed out ${pointsCashedOut} points`,
+                            points: -pointsCashedOut
+                        };
+                        const newPayoutEntry = {
+                             date: new Date().toLocaleDateString('en-US'),
+                             amount: parseFloat(payoutAmount)
+                        };
+
+                        await updateDoc(userDocRef, {
+                            points: 0,
+                            pointsHistory: [...(userData.pointsHistory || []), newHistoryEntry],
+                            payoutHistory: [...(userData.payoutHistory || []), newPayoutEntry]
+                        });
+
+                        console.log('Cash out request submitted and points reset.');
+                        if (cashoutModal) cashoutModal.classList.add('hidden');
+                        window.open(channelUrl, '_blank');
+                    } catch (error) {
+                        console.error("Error during cash out:", error);
+                        window.open(channelUrl, '_blank');
+                    } finally {
+                        hideLoading();
+                    }
+                });
+            }
+            
+            generateRandomChartData();
+            showLoading();
+            
+            onAuthStateChanged(auth, async (user) => {
+                isAuthReady = true;
+                if (user) {
+                    if (user.isAnonymous) {
+                         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                         if (initialAuthToken) {
+                             try {
+                                 await signInWithCustomToken(auth, initialAuthToken);
+                             } catch(e) {
+                                 console.error("Error signing in with custom token:", e);
+                                 if (loginPage) loginPage.style.display = 'flex';
+                                 if (appContainer) appContainer.style.display = 'none';
+                                 hideLoading();
+                             }
+                         } else {
+                             if (loginPage) loginPage.style.display = 'flex';
+                             if (appContainer) appContainer.style.display = 'none';
+                             hideLoading();
+                         }
+                    } else {
+                        userId = user.uid;
+                        await seedInitialData(user);
+                        await fetchUserData(userId);
+                    }
+                } else {
+                    console.log("No user is signed in. Showing login page.");
+                    if (loginPage) loginPage.style.display = 'flex';
+                    if (appContainer) appContainer.style.display = 'none';
+                    hideLoading();
+                }
+            });
+
+            if (typeof __initial_auth_token === 'undefined') {
+                 signInAnonymously(auth);
+            }
+        });
+    </script>
+</body>
+</html>
+
+
